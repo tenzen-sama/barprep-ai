@@ -1705,33 +1705,17 @@ JSON format:
   ]
 }`;
 
-    // Use Cloudflare Worker proxy to avoid CORS
-    const PROXY_URL = 'https://barprep-proxy.tenzen-sama.workers.dev';
+    // Use Cloudflare Worker proxy (Gemini free API)
+    const PROXY_URL = 'https://barprep-proxy.0xxronin.workers.dev';
+    const prompt = `Generate flashcards from this ${course ? course.name : ''} PDF for Nigerian Law School Bar Finals preparation. The topic is: ${FC.selectedPdf.topics ? FC.selectedPdf.topics.name : FC.selectedPdf.name}.`;
     const resp = await fetch(PROXY_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        model: 'claude-sonnet-4-20250514',
-        max_tokens: 4000,
-        system: systemPrompt,
-        messages: [{
-          role: 'user',
-          content: [
-            {
-              type: 'document',
-              source: { type: 'base64', media_type: 'application/pdf', data: pdfBase64 }
-            },
-            {
-              type: 'text',
-              text: `Generate flashcards from this ${course ? course.name : ''} PDF for Nigerian Law School Bar Finals preparation. The topic is: ${FC.selectedPdf.topics ? FC.selectedPdf.topics.name : FC.selectedPdf.name}.`
-            }
-          ]
-        }]
-      })
+      body: JSON.stringify({ pdfBase64, prompt, systemPrompt })
     });
 
     const result = await resp.json();
-    const raw = result.content?.[0]?.text || '';
+    const raw = result.text || '';
     const clean = raw.replace(/```json|```/g, '').trim();
     const parsed = JSON.parse(clean);
     const cards = parsed.cards || [];
