@@ -61,13 +61,16 @@ function getCardsByCourse(courseId){
 
 async function renderFlashcards(){
   const el = document.getElementById('fc-container');
-  // ensure cards loaded
-  if(FC.cards.length === 0 && S.user) await loadCards();
-
+  if(!el) return;
+  if(S.user && FC.cards.length === 0) await loadCards();
+  FC.view = FC.view || 'setup';
   if(FC.view === 'setup') renderFCSetup(el);
   else if(FC.view === 'study') renderFCStudy(el);
   else if(FC.view === 'end') renderFCEnd(el);
   else if(FC.view === 'manage') renderFCManage(el);
+  else if(FC.view === 'generate') renderFCGenerate(el);
+  else if(FC.view === 'review') renderFCReview(el);
+  else renderFCSetup(el);
 }
 
 function renderFCSetup(el){
@@ -279,6 +282,82 @@ async function deleteCard(id){
   toast('Card deleted','ok');
 }
 
+
+// ===== TOPIC CRUD =====
+function toggleTopicMenu(menuId){
+  // close all other menus first
+  document.querySelectorAll('.topic-dropdown.open').forEach(m => {
+    if(m.id !== menuId) m.classList.remove('open');
+  });
+  document.getElementById(menuId)?.classList.toggle('open');
+}
+// close menus on outside click
+document.addEventListener('click', () => {
+  document.querySelectorAll('.topic-dropdown.open').forEach(m => m.classList.remove('open'));
+});
+
+function startRenameTopic(topicId, currentName, type){
+  document.querySelectorAll('.topic-dropdown.open').forEach(m => m.classList.remove('open'));
+  const nameEl = document.getElementById('tname-' + topicId);
+  if(!nameEl) return;
+  const input = document.createElement('input');
+  input.className = 'rename-input';
+  input.value = currentName;
+  input.onclick = e => e.stopPropagation();
+  input.onkeydown = async e => {
+    if(e.key === 'Enter') await confirmRenameTopic(topicId, input.value.trim(), type, nameEl);
+    if(e.key === 'Escape'){ nameEl.textContent = currentName; input.replaceWith(nameEl); }
+  };
+  input.onblur = async () => await confirmRenameTopic(topicId, input.value.trim(), type, nameEl);
+  nameEl.replaceWith(input);
+  input.focus(); input.select();
+}
+
+async function confirmRenameTopic(topicId, newName, type, nameEl){
+  if(!newName){ nameEl && (nameEl.textContent = newName); return; }
+  const { error } = await sb.from('topics').update({ name: newName }).eq('id', topicId);
+  if(error){ toast('Rename failed: ' + error.message, 'err'); return; }
+  // update local state
+  Object.keys(S.topics).forEach(courseId => {
+    const t = S.topics[courseId]?.find(t => t.id === topicId);
+    if(t) t.name = newName;
+  });
+  toast('Renamed to "' + newName + '"', 'ok');
+  if(type === 'pdf') renderPdfs(); else renderAudio();
+}
+
+async function deleteTopic(topicId, type){
+  const courseId = type === 'pdf' ? S.pdfCourse : S.audioCourse;
+  const topic = S.topics[courseId]?.find(t => t.id === topicId);
+  const name = topic?.name || 'this folder';
+  // check if topic has files
+  const hasFiles = type === 'pdf'
+    ? (S.pdfs[courseId] || []).some(f => f.topic_id === topicId)
+    : (S.audios[courseId] || []).some(f => f.topic_id === topicId);
+  const msg = hasFiles
+    ? `Delete "${name}" and all its files? This cannot be undone.`
+    : `Delete empty folder "${name}"?`;
+  if(!confirm(msg)) return;
+  // delete files from storage first if any
+  if(hasFiles){
+    const bucket = type === 'pdf' ? 'pdfs' : 'audio';
+    const table = type === 'pdf' ? 'pdfs' : 'audio_files';
+    const files = (type === 'pdf' ? S.pdfs[courseId] : S.audios[courseId]) || [];
+    const topicFiles = files.filter(f => f.topic_id === topicId);
+    const paths = topicFiles.map(f => f.file_path);
+    if(paths.length > 0) await sb.storage.from(bucket).remove(paths);
+    await sb.from(table).delete().eq('topic_id', topicId);
+    if(type === 'pdf') S.pdfs[courseId] = files.filter(f => f.topic_id !== topicId);
+    else S.audios[courseId] = files.filter(f => f.topic_id !== topicId);
+  }
+  // delete topic
+  await sb.from('topics').delete().eq('id', topicId);
+  S.topics[courseId] = (S.topics[courseId] || []).filter(t => t.id !== topicId);
+  updateBadges();
+  toast('Folder deleted', 'ok');
+  if(type === 'pdf') renderPdfs(); else renderAudio();
+}
+
 </script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
@@ -403,6 +482,20 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:'Syne',
 
 @media(max-width:768px){.toggle-sidebar-btn{display:none}}
 
+
+
+/* ===== TOPIC CRUD ===== */
+.topic-hdr-menu{position:relative;display:inline-block}
+.topic-menu-btn{background:none;border:none;color:var(--text3);cursor:pointer;font-size:15px;padding:2px 4px;border-radius:5px;transition:all 0.13s;line-height:1}
+.topic-menu-btn:hover{background:var(--bg4);color:var(--text2)}
+.topic-dropdown{display:none;position:absolute;right:0;top:100%;background:var(--bg2);border:1px solid var(--border2);border-radius:8px;padding:4px;z-index:100;min-width:130px;box-shadow:0 4px 16px var(--shadow)}
+.topic-dropdown.open{display:block}
+.topic-dd-item{display:flex;align-items:center;gap:8px;padding:7px 10px;border-radius:6px;cursor:pointer;font-size:12px;color:var(--text2);transition:all 0.12s;white-space:nowrap}
+.topic-dd-item:hover{background:var(--bg3);color:var(--text)}
+.topic-dd-item.danger{color:var(--danger)}
+.topic-dd-item.danger:hover{background:rgba(248,113,113,0.1)}
+
+.rename-input{flex:1;background:var(--bg3);border:1px solid var(--neon);border-radius:6px;padding:3px 8px;color:var(--text);font-family:'Syne',sans-serif;font-size:13px;outline:none}
 
 /* ===== FLASHCARD GENERATE & REVIEW ===== */
 .fc-tabs{display:flex;gap:5px;margin-bottom:18px}
@@ -1351,8 +1444,15 @@ function renderPdfs(){
     div.innerHTML=`
       <div class="topic-hdr" onclick="toggleTopic('${key}',this)">
         <i class="ti ti-folder"></i>
-        <span class="topic-hdr-name">${topic.name}</span>
+        <span class="topic-hdr-name" id="tname-${topic.id}">${topic.name}</span>
         <span class="topic-hdr-count">${tf.length} file${tf.length!==1?'s':''}</span>
+        <div class="topic-hdr-menu" onclick="event.stopPropagation()">
+          <button class="topic-menu-btn" onclick="toggleTopicMenu('tmenu-${topic.id}')"><i class="ti ti-dots-vertical"></i></button>
+          <div class="topic-dropdown" id="tmenu-${topic.id}">
+            <div class="topic-dd-item" onclick="startRenameTopic('${topic.id}','${topic.name}','pdf')"><i class="ti ti-pencil"></i>Rename</div>
+            <div class="topic-dd-item danger" onclick="deleteTopic('${topic.id}','pdf')"><i class="ti ti-trash"></i>Delete folder</div>
+          </div>
+        </div>
         <i class="ti ti-chevron-down topic-hdr-chev ${isOpen?'open':''}"></i>
       </div>
       <div class="topic-files ${isOpen?'open':''}" id="tfiles-${key}">
@@ -1406,8 +1506,15 @@ function renderAudio(){
     div.innerHTML=`
       <div class="topic-hdr" onclick="toggleTopic('${key}',this)">
         <i class="ti ti-folder"></i>
-        <span class="topic-hdr-name">${topic.name}</span>
+        <span class="topic-hdr-name" id="tname-${topic.id}">${topic.name}</span>
         <span class="topic-hdr-count">${tf.length} file${tf.length!==1?'s':''}</span>
+        <div class="topic-hdr-menu" onclick="event.stopPropagation()">
+          <button class="topic-menu-btn" onclick="toggleTopicMenu('tmenu-${topic.id}')"><i class="ti ti-dots-vertical"></i></button>
+          <div class="topic-dropdown" id="tmenu-${topic.id}">
+            <div class="topic-dd-item" onclick="startRenameTopic('${topic.id}','${topic.name}','pdf')"><i class="ti ti-pencil"></i>Rename</div>
+            <div class="topic-dd-item danger" onclick="deleteTopic('${topic.id}','pdf')"><i class="ti ti-trash"></i>Delete folder</div>
+          </div>
+        </div>
         <i class="ti ti-chevron-down topic-hdr-chev ${isOpen?'open':''}"></i>
       </div>
       <div class="topic-files ${isOpen?'open':''}" id="tfiles-${key}">
@@ -2001,6 +2108,82 @@ async function deleteCard(id){
   await sb.from('flashcards').delete().eq('id',id);
   FC.cards = FC.cards.filter(c=>c.id!==id);
   renderCardList(); toast('Card deleted','ok');
+}
+
+
+// ===== TOPIC CRUD =====
+function toggleTopicMenu(menuId){
+  // close all other menus first
+  document.querySelectorAll('.topic-dropdown.open').forEach(m => {
+    if(m.id !== menuId) m.classList.remove('open');
+  });
+  document.getElementById(menuId)?.classList.toggle('open');
+}
+// close menus on outside click
+document.addEventListener('click', () => {
+  document.querySelectorAll('.topic-dropdown.open').forEach(m => m.classList.remove('open'));
+});
+
+function startRenameTopic(topicId, currentName, type){
+  document.querySelectorAll('.topic-dropdown.open').forEach(m => m.classList.remove('open'));
+  const nameEl = document.getElementById('tname-' + topicId);
+  if(!nameEl) return;
+  const input = document.createElement('input');
+  input.className = 'rename-input';
+  input.value = currentName;
+  input.onclick = e => e.stopPropagation();
+  input.onkeydown = async e => {
+    if(e.key === 'Enter') await confirmRenameTopic(topicId, input.value.trim(), type, nameEl);
+    if(e.key === 'Escape'){ nameEl.textContent = currentName; input.replaceWith(nameEl); }
+  };
+  input.onblur = async () => await confirmRenameTopic(topicId, input.value.trim(), type, nameEl);
+  nameEl.replaceWith(input);
+  input.focus(); input.select();
+}
+
+async function confirmRenameTopic(topicId, newName, type, nameEl){
+  if(!newName){ nameEl && (nameEl.textContent = newName); return; }
+  const { error } = await sb.from('topics').update({ name: newName }).eq('id', topicId);
+  if(error){ toast('Rename failed: ' + error.message, 'err'); return; }
+  // update local state
+  Object.keys(S.topics).forEach(courseId => {
+    const t = S.topics[courseId]?.find(t => t.id === topicId);
+    if(t) t.name = newName;
+  });
+  toast('Renamed to "' + newName + '"', 'ok');
+  if(type === 'pdf') renderPdfs(); else renderAudio();
+}
+
+async function deleteTopic(topicId, type){
+  const courseId = type === 'pdf' ? S.pdfCourse : S.audioCourse;
+  const topic = S.topics[courseId]?.find(t => t.id === topicId);
+  const name = topic?.name || 'this folder';
+  // check if topic has files
+  const hasFiles = type === 'pdf'
+    ? (S.pdfs[courseId] || []).some(f => f.topic_id === topicId)
+    : (S.audios[courseId] || []).some(f => f.topic_id === topicId);
+  const msg = hasFiles
+    ? `Delete "${name}" and all its files? This cannot be undone.`
+    : `Delete empty folder "${name}"?`;
+  if(!confirm(msg)) return;
+  // delete files from storage first if any
+  if(hasFiles){
+    const bucket = type === 'pdf' ? 'pdfs' : 'audio';
+    const table = type === 'pdf' ? 'pdfs' : 'audio_files';
+    const files = (type === 'pdf' ? S.pdfs[courseId] : S.audios[courseId]) || [];
+    const topicFiles = files.filter(f => f.topic_id === topicId);
+    const paths = topicFiles.map(f => f.file_path);
+    if(paths.length > 0) await sb.storage.from(bucket).remove(paths);
+    await sb.from(table).delete().eq('topic_id', topicId);
+    if(type === 'pdf') S.pdfs[courseId] = files.filter(f => f.topic_id !== topicId);
+    else S.audios[courseId] = files.filter(f => f.topic_id !== topicId);
+  }
+  // delete topic
+  await sb.from('topics').delete().eq('id', topicId);
+  S.topics[courseId] = (S.topics[courseId] || []).filter(t => t.id !== topicId);
+  updateBadges();
+  toast('Folder deleted', 'ok');
+  if(type === 'pdf') renderPdfs(); else renderAudio();
 }
 
 </script>
