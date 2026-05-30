@@ -357,6 +357,50 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:'Syne',
 .toggle-sidebar-btn.collapsed{left:0}
 [data-theme="navy"] .toggle-sidebar-btn{background:#1a2740;border-color:rgba(255,255,255,0.1);color:rgba(255,255,255,0.4)}
 [data-theme="navy"] .toggle-sidebar-btn:hover{color:#c9a84c}
+
+/* ===== DASHBOARD UPGRADES ===== */
+.continue-card{background:var(--bg2);border:1px solid var(--border2);border-radius:12px;padding:18px 20px;margin-bottom:16px;display:flex;align-items:center;gap:16px;cursor:pointer;transition:all 0.15s}
+.continue-card:hover{border-color:var(--border3);background:var(--bg3)}
+.continue-card-icon{width:44px;height:44px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0}
+.continue-card-icon.study{background:rgba(124,92,252,0.15);color:var(--neon2)}
+.continue-card-icon.audio{background:rgba(34,211,238,0.12);color:var(--cyan)}
+[data-theme="navy"] .continue-card-icon.study{background:rgba(201,168,76,0.15);color:#c9a84c}
+[data-theme="navy"] .continue-card-icon.audio{background:rgba(37,99,235,0.12);color:#60a5fa}
+.continue-card-body{flex:1;min-width:0}
+.continue-card-label{font-size:10px;text-transform:uppercase;letter-spacing:0.1em;color:var(--text3);margin-bottom:3px}
+.continue-card-title{font-size:14px;font-weight:600;margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.continue-card-sub{font-size:11px;color:var(--text3);margin-bottom:8px}
+.continue-bar{height:5px;background:var(--bg4);border-radius:99px;overflow:hidden;margin-bottom:5px}
+.continue-bar-fill{height:5px;border-radius:99px;background:linear-gradient(90deg,var(--neon),var(--cyan))}
+[data-theme="navy"] .continue-bar-fill{background:linear-gradient(90deg,#1e2d4a,#c9a84c)}
+.continue-bar-label{font-size:10px;color:var(--text3);font-family:'Space Mono',monospace}
+.continue-card-cta{flex-shrink:0}
+.btn-cta{padding:9px 18px;background:var(--neon);border:none;border-radius:8px;color:#fff;font-family:'Space Mono',monospace;font-size:11px;cursor:pointer;transition:all 0.15s;white-space:nowrap}
+.btn-cta:hover{opacity:0.88}
+[data-theme="navy"] .btn-cta{background:#1e2d4a}
+
+.continue-empty{background:var(--bg2);border:1px dashed var(--border2);border-radius:12px;padding:16px 20px;margin-bottom:16px;display:flex;align-items:center;gap:12px;color:var(--text3);font-size:13px}
+.continue-empty i{font-size:20px;opacity:0.4}
+
+.quick-actions{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:20px}
+.qa-btn{background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:12px 10px;text-align:center;cursor:pointer;transition:all 0.13s;display:flex;flex-direction:column;align-items:center;gap:6px}
+.qa-btn:hover{border-color:var(--border2);background:var(--bg3)}
+.qa-btn i{font-size:20px;color:var(--neon2)}
+[data-theme="navy"] .qa-btn i{color:#c9a84c}
+.qa-btn span{font-size:11px;color:var(--text2);line-height:1.3}
+
+.course-grid .course-card .cc-bar{height:6px;margin-top:10px}
+.course-grid .course-card .cc-fill{height:6px}
+.cc-pct{font-size:18px;font-weight:700;font-family:'Space Mono',monospace;margin-top:8px}
+.cc-topics{font-size:11px;color:var(--text3);margin-top:1px}
+
+@media(max-width:768px){
+  .quick-actions{grid-template-columns:repeat(2,1fr)}
+  .continue-card{flex-wrap:wrap}
+  .continue-card-cta{width:100%}
+  .btn-cta{width:100%}
+}
+
 @media(max-width:768px){.toggle-sidebar-btn{display:none}}
 
 
@@ -838,11 +882,14 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:'Syne',
             <h2>Welcome back, <span id="dash-name">—</span></h2>
             <p>Nigerian Law School · Bar Part II</p>
           </div>
-          <div class="stats-row">
-            <div class="stat"><div class="stat-lbl">PDFs</div><div class="stat-val v-neon" id="s-pdfs">—</div></div>
-            <div class="stat"><div class="stat-lbl">Audio</div><div class="stat-val v-cyan" id="s-audio">—</div></div>
-            <div class="stat"><div class="stat-lbl">Flashcards</div><div class="stat-val v-gold">—</div></div>
-            <div class="stat"><div class="stat-lbl">MCQs done</div><div class="stat-val v-green">—</div></div>
+          <div id="dash-continue-study"></div>
+          <div id="dash-continue-audio"></div>
+          <div class="section-label" style="margin-bottom:8px">Quick Actions</div>
+          <div class="quick-actions">
+            <div class="qa-btn" onclick="switchView('pdfs')"><i class="ti ti-upload"></i><span>Upload PDF</span></div>
+            <div class="qa-btn" onclick="switchView('flashcards');setTimeout(()=>{FC.activeTab='generate';renderFlashcards();},60)"><i class="ti ti-sparkles"></i><span>Generate Flashcards</span></div>
+            <div class="qa-btn" onclick="switchView('mcq')"><i class="ti ti-list-check"></i><span>Generate MCQs</span></div>
+            <div class="qa-btn" onclick="switchView('audio')"><i class="ti ti-microphone"></i><span>Upload Audio</span></div>
           </div>
           <div class="section-label">Your Courses</div>
           <div class="course-grid" id="dash-courses"></div>
@@ -1138,20 +1185,116 @@ function updateBadges(){
 
 // ===== DASHBOARD =====
 function renderDashboard(){
-  const c=document.getElementById('dash-courses');
-  c.innerHTML='';
-  COURSES.forEach(course=>{
-    const pdfs=(S.pdfs[course.id]||[]).length;
-    const audios=(S.audios[course.id]||[]).length;
-    const pct=Math.min(100,Math.round((pdfs+audios)*8));
-    c.innerHTML+=`<div class="course-card" onclick="switchView('pdfs');setTimeout(()=>setCourse('pdf','${course.id}'),60)">
+  updateBadges();
+  renderContinueStudy();
+  renderContinueAudio();
+  renderCourseCards();
+}
+
+function renderContinueStudy(){
+  const el = document.getElementById('dash-continue-study');
+  if(!el) return;
+  // Find course with most recent PDF activity
+  let bestCourse = null, bestPdf = null;
+  COURSES.forEach(course => {
+    const pdfs = S.pdfs[course.id] || [];
+    if(pdfs.length > 0 && !bestPdf){
+      bestCourse = course;
+      bestPdf = pdfs[pdfs.length - 1];
+    }
+  });
+  if(!bestCourse || !bestPdf){
+    el.innerHTML = `<div class="continue-empty"><i class="ti ti-book"></i>No study material yet — upload a PDF to get started.</div>`;
+    return;
+  }
+  const topics = S.topics[bestCourse.id] || [];
+  const pdfs = S.pdfs[bestCourse.id] || [];
+  const totalTopics = topics.length;
+  // estimate completion from flashcard review data
+  const courseCards = FC.cards.filter(c => c.course_id === bestCourse.id);
+  const reviewedCards = courseCards.filter(c => c.review_count > 0).length;
+  const pct = courseCards.length > 0 ? Math.round((reviewedCards / courseCards.length) * 100) : 0;
+  const topicName = bestPdf.topics ? bestPdf.topics.name : (topics[0] ? topics[0].name : 'First Topic');
+  const lastStudied = bestPdf.uploaded_at ? timeAgo(bestPdf.uploaded_at) : 'recently';
+
+  el.innerHTML = `
+    <div class="section-label">Continue Studying</div>
+    <div class="continue-card" onclick="switchView('flashcards')">
+      <div class="continue-card-icon study"><i class="ti ti-book-open"></i></div>
+      <div class="continue-card-body">
+        <div class="continue-card-label">Continue Studying</div>
+        <div class="continue-card-title">${bestCourse.name}</div>
+        <div class="continue-card-sub">Current Topic: ${topicName} · Last studied ${lastStudied}</div>
+        <div class="continue-bar"><div class="continue-bar-fill" style="width:${pct}%"></div></div>
+        <div class="continue-bar-label">${pct}% reviewed · ${pdfs.length} PDF${pdfs.length!==1?'s':''} uploaded</div>
+      </div>
+      <div class="continue-card-cta"><button class="btn-cta" onclick="event.stopPropagation();switchView('flashcards')">Resume Study</button></div>
+    </div>`;
+}
+
+function renderContinueAudio(){
+  const el = document.getElementById('dash-continue-audio');
+  if(!el) return;
+  // Find first course with audio
+  let bestCourse = null, bestAudio = null;
+  COURSES.forEach(course => {
+    const audios = S.audios[course.id] || [];
+    if(audios.length > 0 && !bestAudio){
+      bestCourse = course;
+      bestAudio = audios[audios.length - 1];
+    }
+  });
+  if(!bestAudio){
+    el.innerHTML = `
+      <div class="continue-empty" style="cursor:pointer" onclick="switchView('audio')">
+        <i class="ti ti-headphones"></i>
+        <span>No audio overviews yet — <u>upload one</u> to enable audio revision.</span>
+      </div>`;
+    return;
+  }
+  const topicName = bestAudio.topics ? bestAudio.topics.name : 'Overview';
+  el.innerHTML = `
+    <div class="continue-card" onclick="switchView('audio')">
+      <div class="continue-card-icon audio"><i class="ti ti-headphones"></i></div>
+      <div class="continue-card-body">
+        <div class="continue-card-label">Continue Listening</div>
+        <div class="continue-card-title">${bestCourse.name}</div>
+        <div class="continue-card-sub">Topic: ${topicName}</div>
+      </div>
+      <div class="continue-card-cta"><button class="btn-cta" style="background:var(--cyan)" onclick="event.stopPropagation();switchView('audio')">Resume Audio</button></div>
+    </div>`;
+}
+
+function renderCourseCards(){
+  const c = document.getElementById('dash-courses');
+  if(!c) return;
+  c.innerHTML = '';
+  COURSES.forEach(course => {
+    const topics = S.topics[course.id] || [];
+    const pdfs = S.pdfs[course.id] || [];
+    const totalTopics = topics.length;
+    // topics with at least 1 PDF = "active" topics
+    const activeTopics = topics.filter(t => pdfs.some(p => p.topic_id === t.id)).length;
+    const pct = totalTopics > 0 ? Math.round((activeTopics / totalTopics) * 100) : 0;
+
+    c.innerHTML += `<div class="course-card" onclick="switchView('pdfs');setTimeout(()=>setCourse('pdf','${course.id}'),60)">
       <div class="cc-tag" style="background:${course.bg};color:${course.color};border:1px solid ${course.border}">${course.label}</div>
       <div class="cc-name">${course.name}</div>
-      <div class="cc-meta">${pdfs} PDF${pdfs!==1?'s':''} · ${audios} audio${audios!==1?'s':''}</div>
+      <div class="cc-pct" style="color:${course.color}">${pct}%</div>
+      <div class="cc-topics">${activeTopics} / ${totalTopics || '—'} Topics with material</div>
       <div class="cc-bar"><div class="cc-fill" style="width:${pct}%;background:${course.color}"></div></div>
     </div>`;
   });
-  updateBadges();
+}
+
+function timeAgo(dateStr){
+  const diff = Date.now() - new Date(dateStr).getTime();
+  const mins = Math.floor(diff / 60000);
+  if(mins < 60) return mins <= 1 ? 'just now' : mins + ' minutes ago';
+  const hrs = Math.floor(mins / 60);
+  if(hrs < 24) return hrs === 1 ? '1 hour ago' : hrs + ' hours ago';
+  const days = Math.floor(hrs / 24);
+  return days === 1 ? 'yesterday' : days + ' days ago';
 }
 
 // ===== COURSE TABS =====
