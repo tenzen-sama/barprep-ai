@@ -850,7 +850,7 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:'Syne',
 .mobile-overlay.open{display:block}
 .sidebar.mobile-open{transform:translateX(0)!important}
 
-.bottom-nav{display:none;background:var(--bg2);border-top:1px solid var(--border);padding:6px 0 env(safe-area-inset-bottom,6px);flex-shrink:0}
+.bottom-nav{display:none;background:var(--bg2);border-top:1px solid var(--border);padding:6px 0 env(safe-area-inset-bottom,6px);flex-shrink:0;position:fixed;bottom:0;left:0;right:0;z-index:200}
 .bottom-nav-items{display:flex;justify-content:space-around}
 .bnav-item{display:flex;flex-direction:column;align-items:center;gap:3px;padding:6px 10px;cursor:pointer;color:var(--text3);transition:color 0.13s;font-size:10px;border-radius:8px}
 .bnav-item.active{color:var(--neon2)}
@@ -864,7 +864,8 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:'Syne',
   .stats-row{grid-template-columns:1fr 1fr}
   .course-grid{grid-template-columns:1fr}
   .pdf-panel{width:100%;right:-100%}
-  .content{padding:14px}
+  .content{padding:14px;padding-bottom:80px}
+  .toggle-sidebar-btn{display:none}
 }
 @media(max-width:400px){
   .stats-row{grid-template-columns:1fr 1fr}
@@ -905,13 +906,11 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:'Syne',
 
   <!-- Mobile topbar -->
   <div class="mobile-topbar">
+    <button class="hamburger" onclick="toggleMobileSidebar()"><i class="ti ti-menu-2"></i></button>
     <div class="mobile-logo">BarPrep AI</div>
-    <div style="display:flex;align-items:center;gap:8px">
-      <div class="theme-toggle">
-        <button class="theme-btn active" data-theme-val="grey" onclick="setTheme('grey')" title="Grey">◑</button>
-        <button class="theme-btn" data-theme-val="navy" onclick="setTheme('navy')" title="Navy" style="font-size:11px;font-weight:700;letter-spacing:-0.03em">NG</button>
-      </div>
-      <button class="hamburger" onclick="toggleMobileSidebar()"><i class="ti ti-menu-2"></i></button>
+    <div class="theme-toggle">
+      <button class="theme-btn active" data-theme-val="grey" onclick="setTheme('grey')" title="Grey">◑</button>
+      <button class="theme-btn" data-theme-val="navy" onclick="setTheme('navy')" title="Navy" style="font-size:11px;font-weight:700;letter-spacing:-0.03em">NG</button>
     </div>
   </div>
 
