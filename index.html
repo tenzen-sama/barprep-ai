@@ -7,7 +7,279 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/dist/tabler-icons.min.css">
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2">
+// ===== SIDEBAR COLLAPSE =====
+let sidebarCollapsed = false;
+function toggleSidebar(){
+  sidebarCollapsed = !sidebarCollapsed;
+  const sb = document.getElementById('sidebar');
+  const btn = document.getElementById('toggle-sidebar-btn');
+  const icon = document.getElementById('toggle-sidebar-icon');
+  sb.classList.toggle('collapsed', sidebarCollapsed);
+  btn.classList.toggle('collapsed', sidebarCollapsed);
+  icon.className = sidebarCollapsed ? 'ti ti-chevron-right' : 'ti ti-chevron-left';
+  localStorage.setItem('bp-sidebar', sidebarCollapsed ? '1' : '0');
+}
+document.addEventListener('keydown', e => {
+  if((e.ctrlKey || e.metaKey) && e.key === '.') { e.preventDefault(); toggleSidebar(); }
+});
+(function(){
+  if(localStorage.getItem('bp-sidebar') === '1') toggleSidebar();
+})();
+
+// ===== FLASHCARD ENGINE =====
+// Simple SM-2-inspired SRS: Again=0, Hard=1, Easy=4 (days)
+const FC_INTERVALS = { again: 0, hard: 1, easy: 4 };
+
+let FC = {
+  cards: [],         // all cards from DB
+  queue: [],         // current session queue
+  current: 0,        // index in queue
+  flipped: false,
+  mode: 'due',       // 'due' | 'all' | 'course'
+  selectedCourse: null,
+  sessionStats: { again: 0, hard: 0, easy: 0 },
+  view: 'setup',     // 'setup' | 'study' | 'end' | 'manage'
+};
+
+async function loadCards(){
+  const { data } = await sb.from('flashcards').select('*').order('created_at');
+  FC.cards = data || [];
+}
+
+function getDueCards(){
+  const now = new Date();
+  return FC.cards.filter(c => {
+    if(!c.next_review) return true;
+    return new Date(c.next_review) <= now;
+  });
+}
+
+function getCardsByCourse(courseId){
+  return FC.cards.filter(c => c.course_id === courseId);
+}
+
+async function renderFlashcards(){
+  const el = document.getElementById('fc-container');
+  // ensure cards loaded
+  if(FC.cards.length === 0 && S.user) await loadCards();
+
+  if(FC.view === 'setup') renderFCSetup(el);
+  else if(FC.view === 'study') renderFCStudy(el);
+  else if(FC.view === 'end') renderFCEnd(el);
+  else if(FC.view === 'manage') renderFCManage(el);
+}
+
+function renderFCSetup(el){
+  const due = getDueCards();
+  el.innerHTML = `
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
+      <div>
+        <div style="font-size:16px;font-weight:600">Flashcards</div>
+        <div style="font-size:12px;color:var(--text3);margin-top:2px">${FC.cards.length} cards total · ${due.length} due today</div>
+      </div>
+      <div style="display:flex;gap:8px">
+        <button class="btn-sm" onclick="FC.view='manage';renderFlashcards()"><i class="ti ti-plus" style="font-size:13px"></i> Add Cards</button>
+      </div>
+    </div>
+    ${FC.cards.length === 0 ? `
+      <div class="ph-wrap">
+        <div class="ph-icon"><i class="ti ti-cards"></i></div>
+        <div class="ph-title">No cards yet</div>
+        <div class="ph-sub">Add your first flashcard to get started with spaced repetition review.</div>
+        <button class="btn-sm" style="margin-top:16px" onclick="FC.view='manage';renderFlashcards()">+ Add Cards</button>
+      </div>` : `
+    <div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:0.1em;margin-bottom:10px">Study Mode</div>
+    <div class="fc-setup-opts" id="fc-mode-opts">
+      <div class="fc-opt ${FC.mode==='due'?'selected':''}" onclick="selectFCMode('due')">Due Today (${due.length})</div>
+      <div class="fc-opt ${FC.mode==='all'?'selected':''}" onclick="selectFCMode('all')">All Cards (${FC.cards.length})</div>
+      ${COURSES.map(c => {
+        const n = getCardsByCourse(c.id).length;
+        return n > 0 ? `<div class="fc-opt ${FC.mode==='course'&&FC.selectedCourse===c.id?'selected':''}" onclick="selectFCMode('course','${c.id}')">${c.label} (${n})</div>` : '';
+      }).join('')}
+    </div>
+    <button class="btn-primary" style="max-width:200px" onclick="startFCSession()">Start Session →</button>`}
+  `;
+}
+
+function selectFCMode(mode, courseId){
+  FC.mode = mode;
+  FC.selectedCourse = courseId || null;
+  renderFCSetup(document.getElementById('fc-container'));
+}
+
+function startFCSession(){
+  let cards;
+  if(FC.mode === 'due') cards = getDueCards();
+  else if(FC.mode === 'all') cards = [...FC.cards];
+  else cards = getCardsByCourse(FC.selectedCourse);
+
+  if(cards.length === 0){ toast('No cards in this selection','err'); return; }
+  // shuffle
+  FC.queue = cards.sort(() => Math.random() - 0.5);
+  FC.current = 0;
+  FC.flipped = false;
+  FC.sessionStats = { again: 0, hard: 0, easy: 0 };
+  FC.view = 'study';
+  renderFlashcards();
+}
+
+function renderFCStudy(el){
+  const card = FC.queue[FC.current];
+  const course = COURSES.find(c => c.id === card.course_id);
+  const pct = Math.round((FC.current / FC.queue.length) * 100);
+  el.innerHTML = `
+    <div class="fc-wrap">
+      <div class="fc-progress-bar"><div class="fc-progress-fill" style="width:${pct}%"></div></div>
+      <div class="fc-meta">
+        <div class="fc-meta-left">Card <span>${FC.current + 1}</span> of <span>${FC.queue.length}</span></div>
+        <div class="fc-meta-right">
+          <div class="fc-chip new">Again: ${FC.sessionStats.again}</div>
+          <div class="fc-chip due">Hard: ${FC.sessionStats.hard}</div>
+          <div class="fc-chip done">Easy: ${FC.sessionStats.easy}</div>
+        </div>
+      </div>
+      <div class="fc-card ${FC.flipped?'flipped':''}" id="fc-card" onclick="flipCard()">
+        <div class="fc-card-topic">${card.topic_label||''}</div>
+        ${course ? `<div class="fc-card-course" style="background:${course.bg};color:${course.color};border:1px solid ${course.border}">${course.label}</div>` : ''}
+        <div class="fc-card-front">${card.front}</div>
+        <div class="fc-card-back">${card.back}</div>
+        <div class="fc-card-hint">Tap to reveal answer</div>
+      </div>
+      <div class="fc-actions ${FC.flipped?'':'fc-actions-hidden'}" id="fc-actions">
+        <button class="fc-btn again" onclick="rateCard('again')">Again<span>Repeat now</span></button>
+        <button class="fc-btn hard" onclick="rateCard('hard')">Hard<span>+1 day</span></button>
+        <button class="fc-btn easy" onclick="rateCard('easy')">Easy<span>+4 days</span></button>
+      </div>
+      ${!FC.flipped ? `<div style="text-align:center;margin-top:14px"><button class="btn-sm" onclick="flipCard()">Show Answer</button></div>` : ''}
+      <div style="text-align:center;margin-top:14px">
+        <button class="btn-cancel" onclick="FC.view='setup';renderFlashcards()">End Session</button>
+      </div>
+    </div>`;
+}
+
+function flipCard(){
+  FC.flipped = true;
+  renderFCStudy(document.getElementById('fc-container'));
+}
+
+async function rateCard(rating){
+  const card = FC.queue[FC.current];
+  FC.sessionStats[rating]++;
+  const days = FC_INTERVALS[rating];
+  const nextReview = new Date();
+  if(days === 0){ nextReview.setMinutes(nextReview.getMinutes() + 10); }
+  else { nextReview.setDate(nextReview.getDate() + days); }
+  // update in DB
+  await sb.from('flashcards').update({
+    next_review: nextReview.toISOString(),
+    last_rating: rating,
+    review_count: (card.review_count || 0) + 1
+  }).eq('id', card.id);
+  // update local
+  const idx = FC.cards.findIndex(c => c.id === card.id);
+  if(idx > -1){ FC.cards[idx].next_review = nextReview.toISOString(); FC.cards[idx].last_rating = rating; }
+
+  FC.current++;
+  FC.flipped = false;
+  if(FC.current >= FC.queue.length){
+    FC.view = 'end';
+    renderFlashcards();
+  } else {
+    renderFCStudy(document.getElementById('fc-container'));
+  }
+}
+
+function renderFCEnd(el){
+  const total = FC.sessionStats.again + FC.sessionStats.hard + FC.sessionStats.easy;
+  const pct = total > 0 ? Math.round((FC.sessionStats.easy / total) * 100) : 0;
+  el.innerHTML = `
+    <div class="fc-session-end">
+      <div class="ph-icon" style="font-size:44px;opacity:0.8">🎉</div>
+      <h3>Session Complete</h3>
+      <p>You reviewed ${total} card${total !== 1 ? 's' : ''} · ${pct}% easy</p>
+      <div class="fc-stats-row">
+        <div class="fc-stat"><div class="fc-stat-val" style="color:#f87171">${FC.sessionStats.again}</div><div class="fc-stat-lbl">Again</div></div>
+        <div class="fc-stat"><div class="fc-stat-val" style="color:var(--gold2)">${FC.sessionStats.hard}</div><div class="fc-stat-lbl">Hard</div></div>
+        <div class="fc-stat"><div class="fc-stat-val" style="color:var(--green)">${FC.sessionStats.easy}</div><div class="fc-stat-lbl">Easy</div></div>
+      </div>
+      <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap">
+        <button class="btn-primary" style="max-width:160px" onclick="FC.view='setup';renderFlashcards()">Back to Setup</button>
+        <button class="btn-sm" onclick="startFCSession()">Study Again</button>
+      </div>
+    </div>`;
+}
+
+function renderFCManage(el){
+  el.innerHTML = `
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:20px">
+      <button class="btn-cancel" onclick="FC.view='setup';renderFlashcards()"><i class="ti ti-arrow-left" style="font-size:13px"></i> Back</button>
+      <div style="font-size:15px;font-weight:600">Add Flashcards</div>
+    </div>
+    <div class="fc-add-wrap">
+      <h4>New Card</h4>
+      <div class="fc-add-row">
+        <textarea id="fc-front" placeholder="Front — question or term (e.g. What is locus standi?)"></textarea>
+        <textarea id="fc-back" placeholder="Back — answer or definition"></textarea>
+      </div>
+      <div class="fc-add-selects">
+        <select id="fc-course-sel">
+          ${COURSES.map(c => `<option value="${c.id}">${c.name}</option>`).join('')}
+        </select>
+        <input style="flex:1;background:var(--bg3);border:1px solid var(--border2);border-radius:8px;padding:8px 10px;color:var(--text);font-family:'Syne',sans-serif;font-size:12px;outline:none" id="fc-topic-inp" placeholder="Topic label (optional)">
+      </div>
+      <button class="btn-sm" id="fc-add-btn" onclick="addCard()">+ Add Card</button>
+    </div>
+    <div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:0.1em;margin-bottom:10px">${FC.cards.length} Cards in deck</div>
+    <div id="fc-card-list"></div>`;
+  renderCardList();
+}
+
+function renderCardList(){
+  const el = document.getElementById('fc-card-list');
+  if(!el) return;
+  if(FC.cards.length === 0){ el.innerHTML = '<div class="empty-state">No cards yet.</div>'; return; }
+  el.innerHTML = FC.cards.slice().reverse().map(c => {
+    const course = COURSES.find(x => x.id === c.course_id);
+    return `<div class="file-row" style="padding-left:14px;flex-direction:column;align-items:flex-start;gap:4px">
+      <div style="display:flex;width:100%;align-items:center;gap:8px">
+        ${course ? `<span class="cc-tag" style="background:${course.bg};color:${course.color};border:1px solid ${course.border};font-size:9px">${course.label}</span>` : ''}
+        <span style="flex:1;font-size:12px;font-weight:500">${c.front}</span>
+        <button class="file-btn del" onclick="deleteCard('${c.id}')"><i class="ti ti-trash"></i></button>
+      </div>
+      <div style="font-size:11px;color:var(--text3);padding-left:2px">${c.back}</div>
+    </div>`;
+  }).join('');
+}
+
+async function addCard(){
+  const front = document.getElementById('fc-front').value.trim();
+  const back = document.getElementById('fc-back').value.trim();
+  const course_id = document.getElementById('fc-course-sel').value;
+  const topic_label = document.getElementById('fc-topic-inp').value.trim();
+  if(!front || !back){ toast('Front and back are required','err'); return; }
+  const btn = document.getElementById('fc-add-btn');
+  btn.disabled = true; btn.innerHTML = '<span class="spinner"></span>';
+  const { data, error } = await sb.from('flashcards').insert({ front, back, course_id, topic_label, review_count: 0 }).select().single();
+  if(error){ toast('Error: '+error.message,'err'); btn.disabled=false; btn.textContent='+ Add Card'; return; }
+  FC.cards.push(data);
+  document.getElementById('fc-front').value = '';
+  document.getElementById('fc-back').value = '';
+  document.getElementById('fc-topic-inp').value = '';
+  btn.disabled = false; btn.textContent = '+ Add Card';
+  toast('Card added','ok');
+  renderCardList();
+}
+
+async function deleteCard(id){
+  if(!confirm('Delete this card?')) return;
+  await sb.from('flashcards').delete().eq('id', id);
+  FC.cards = FC.cards.filter(c => c.id !== id);
+  renderCardList();
+  toast('Card deleted','ok');
+}
+
+</script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 
@@ -76,6 +348,88 @@
 
 html,body{height:100%;background:var(--bg);color:var(--text);font-family:'Syne',sans-serif;font-size:14px;transition:background 0.2s,color 0.2s}
 ::-webkit-scrollbar{width:4px;height:4px}
+
+/* ===== SIDEBAR COLLAPSE ===== */
+.sidebar{transition:width 0.25s ease,min-width 0.25s ease,background 0.2s,border-color 0.2s}
+.sidebar.collapsed{width:0;min-width:0;overflow:hidden;border-right:none}
+.toggle-sidebar-btn{position:fixed;top:50%;left:225px;transform:translateY(-50%);z-index:400;width:18px;height:40px;background:var(--bg2);border:1px solid var(--border2);border-radius:0 6px 6px 0;cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--text3);font-size:12px;transition:left 0.25s ease,background 0.13s,color 0.13s;padding:0}
+.toggle-sidebar-btn:hover{background:var(--bg3);color:var(--neon2)}
+.toggle-sidebar-btn.collapsed{left:0}
+[data-theme="navy"] .toggle-sidebar-btn{background:#1a2740;border-color:rgba(255,255,255,0.1);color:rgba(255,255,255,0.4)}
+[data-theme="navy"] .toggle-sidebar-btn:hover{color:#c9a84c}
+@media(max-width:768px){.toggle-sidebar-btn{display:none}}
+
+/* ===== FLASHCARD ENGINE ===== */
+.fc-wrap{max-width:680px;margin:0 auto}
+.fc-progress-bar{height:3px;background:var(--bg4);border-radius:99px;margin-bottom:20px;overflow:hidden}
+.fc-progress-fill{height:3px;background:linear-gradient(90deg,var(--neon2),var(--cyan));border-radius:99px;transition:width 0.4s ease}
+[data-theme="navy"] .fc-progress-fill{background:linear-gradient(90deg,#1e2d4a,#c9a84c)}
+.fc-meta{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px}
+.fc-meta-left{font-size:12px;color:var(--text3)}
+.fc-meta-left span{color:var(--neon2);font-family:'Space Mono',monospace}
+[data-theme="navy"] .fc-meta-left span{color:#c9a84c}
+.fc-meta-right{display:flex;gap:6px}
+.fc-chip{font-size:10px;font-family:'Space Mono',monospace;padding:2px 9px;border-radius:99px}
+.fc-chip.due{background:rgba(252,211,77,0.12);color:var(--gold2);border:1px solid rgba(252,211,77,0.25)}
+.fc-chip.new{background:rgba(34,211,238,0.1);color:var(--cyan);border:1px solid rgba(34,211,238,0.22)}
+.fc-chip.done{background:rgba(16,185,129,0.1);color:var(--green);border:1px solid rgba(16,185,129,0.22)}
+
+.fc-card{background:var(--bg2);border:1px solid var(--border2);border-radius:14px;min-height:260px;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:32px;text-align:center;cursor:pointer;position:relative;transition:all 0.2s;user-select:none}
+.fc-card:hover{border-color:var(--border3);background:var(--bg3)}
+.fc-card-course{font-size:10px;font-family:'Space Mono',monospace;padding:2px 10px;border-radius:99px;margin-bottom:14px;display:inline-block}
+.fc-card-front{font-size:16px;font-weight:600;line-height:1.5;color:var(--text)}
+.fc-card-back{display:none;font-size:14px;line-height:1.7;color:var(--text2)}
+.fc-card.flipped .fc-card-front{display:none}
+.fc-card.flipped .fc-card-back{display:block}
+.fc-card-hint{position:absolute;bottom:14px;font-size:11px;color:var(--text3)}
+.fc-card.flipped .fc-card-hint{display:none}
+.fc-card-topic{position:absolute;top:12px;right:14px;font-size:10px;color:var(--text3)}
+
+.fc-actions{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-top:16px}
+.fc-btn{padding:12px;border-radius:10px;border:1px solid;font-family:'Space Mono',monospace;font-size:11px;cursor:pointer;transition:all 0.15s;display:flex;flex-direction:column;align-items:center;gap:3px}
+.fc-btn span{font-size:9px;opacity:0.7}
+.fc-btn.again{background:rgba(248,113,113,0.1);border-color:rgba(248,113,113,0.3);color:#f87171}
+.fc-btn.again:hover{background:rgba(248,113,113,0.2)}
+.fc-btn.hard{background:rgba(245,158,11,0.1);border-color:rgba(245,158,11,0.3);color:var(--gold2)}
+.fc-btn.hard:hover{background:rgba(245,158,11,0.2)}
+.fc-btn.easy{background:rgba(16,185,129,0.1);border-color:rgba(16,185,129,0.3);color:var(--green)}
+.fc-btn.easy:hover{background:rgba(16,185,129,0.2)}
+.fc-actions-hidden{display:none}
+
+.fc-session-end{text-align:center;padding:40px 20px}
+.fc-session-end .ph-icon{margin-bottom:12px}
+.fc-session-end h3{font-size:18px;font-weight:700;margin-bottom:6px}
+.fc-session-end p{font-size:13px;color:var(--text3);margin-bottom:20px}
+.fc-stats-row{display:flex;justify-content:center;gap:20px;margin-bottom:24px}
+.fc-stat{text-align:center}
+.fc-stat-val{font-size:22px;font-weight:700;font-family:'Space Mono',monospace}
+.fc-stat-lbl{font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:0.08em;margin-top:2px}
+
+.fc-setup{max-width:520px;margin:0 auto}
+.fc-setup h3{font-size:16px;font-weight:600;margin-bottom:6px}
+.fc-setup p{font-size:13px;color:var(--text3);margin-bottom:20px}
+.fc-setup-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:20px}
+.fc-setup-card{background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:14px;cursor:pointer;transition:all 0.13s}
+.fc-setup-card:hover{border-color:var(--border2)}
+.fc-setup-card.selected{border-color:var(--neon2);background:rgba(124,92,252,0.08)}
+[data-theme="navy"] .fc-setup-card.selected{border-color:#c9a84c;background:rgba(201,168,76,0.08)}
+.fc-setup-card-name{font-size:13px;font-weight:500;margin-bottom:3px}
+.fc-setup-card-meta{font-size:11px;color:var(--text3)}
+.fc-setup-opts{display:flex;gap:8px;margin-bottom:20px;flex-wrap:wrap}
+.fc-opt{padding:6px 14px;border-radius:99px;font-size:12px;cursor:pointer;border:1px solid var(--border);color:var(--text2);transition:all 0.13s}
+.fc-opt:hover{border-color:var(--border2)}
+.fc-opt.selected{background:rgba(124,92,252,0.12);border-color:var(--border3);color:var(--neon2)}
+[data-theme="navy"] .fc-opt.selected{background:rgba(201,168,76,0.1);border-color:rgba(201,168,76,0.3);color:#c9a84c}
+
+.fc-add-wrap{background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:16px;margin-bottom:14px}
+.fc-add-wrap h4{font-size:13px;font-weight:500;margin-bottom:12px}
+.fc-add-row{display:flex;flex-direction:column;gap:8px;margin-bottom:12px}
+.fc-add-row textarea{background:var(--bg3);border:1px solid var(--border2);border-radius:8px;padding:9px 12px;color:var(--text);font-family:'Syne',sans-serif;font-size:13px;outline:none;resize:vertical;min-height:60px;transition:border-color 0.15s}
+.fc-add-row textarea:focus{border-color:var(--neon)}
+.fc-add-row textarea::placeholder{color:var(--text4)}
+.fc-add-selects{display:flex;gap:8px;margin-bottom:12px}
+.fc-add-selects select{flex:1;background:var(--bg3);border:1px solid var(--border2);border-radius:8px;padding:8px 10px;color:var(--text);font-family:'Syne',sans-serif;font-size:12px;outline:none;cursor:pointer}
+
 ::-webkit-scrollbar-track{background:transparent}
 ::-webkit-scrollbar-thumb{background:var(--border2);border-radius:2px}
 
@@ -358,6 +712,10 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:'Syne',
   <div class="app-body">
     <!-- Mobile overlay -->
     <div class="mobile-overlay" id="mobile-overlay" onclick="toggleMobileSidebar()"></div>
+    <button class="toggle-sidebar-btn" id="toggle-sidebar-btn" onclick="toggleSidebar()" title="Toggle sidebar (Ctrl+.)">
+      <i class="ti ti-chevron-left" id="toggle-sidebar-icon"></i>
+    </button>
+
 
     <div class="sidebar" id="sidebar">
       <div class="sidebar-logo">
@@ -465,7 +823,7 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:'Syne',
 
         <!-- PLACEHOLDERS -->
         <div class="view" id="view-flashcards">
-          <div class="ph-wrap"><div class="ph-icon"><i class="ti ti-cards"></i></div><div class="ph-title">Flashcards</div><div class="ph-sub">SRS-powered card review with Easy / Hard / Again intervals. Per-course due-card queues.</div><div class="ph-badge">Coming soon</div></div>
+          <div id="fc-container"></div>
         </div>
         <div class="view" id="view-mcq">
           <div class="ph-wrap"><div class="ph-icon"><i class="ti ti-clipboard-check"></i></div><div class="ph-title">MCQ Practice</div><div class="ph-sub">Timed multiple-choice quizzes filtered by course, topic, and year. Weak-area tracking.</div><div class="ph-badge">Coming soon</div></div>
@@ -674,6 +1032,7 @@ function switchView(v){
   if(v==='pdfs')renderPdfs();
   if(v==='audio')renderAudio();
   if(v==='dashboard')renderDashboard();
+  if(v==='flashcards')renderFlashcards();
 }
 
 // ===== LOAD =====
@@ -951,6 +1310,278 @@ async function deleteFile(id,type,path){
   else{S.audios[courseId]=(S.audios[courseId]||[]).filter(f=>f.id!==id);renderAudio();}
   updateBadges();toast('File deleted','ok');
 }
+
+// ===== SIDEBAR COLLAPSE =====
+let sidebarCollapsed = false;
+function toggleSidebar(){
+  sidebarCollapsed = !sidebarCollapsed;
+  const sb = document.getElementById('sidebar');
+  const btn = document.getElementById('toggle-sidebar-btn');
+  const icon = document.getElementById('toggle-sidebar-icon');
+  sb.classList.toggle('collapsed', sidebarCollapsed);
+  btn.classList.toggle('collapsed', sidebarCollapsed);
+  icon.className = sidebarCollapsed ? 'ti ti-chevron-right' : 'ti ti-chevron-left';
+  localStorage.setItem('bp-sidebar', sidebarCollapsed ? '1' : '0');
+}
+document.addEventListener('keydown', e => {
+  if((e.ctrlKey || e.metaKey) && e.key === '.') { e.preventDefault(); toggleSidebar(); }
+});
+(function(){
+  if(localStorage.getItem('bp-sidebar') === '1') toggleSidebar();
+})();
+
+// ===== FLASHCARD ENGINE =====
+// Simple SM-2-inspired SRS: Again=0, Hard=1, Easy=4 (days)
+const FC_INTERVALS = { again: 0, hard: 1, easy: 4 };
+
+let FC = {
+  cards: [],         // all cards from DB
+  queue: [],         // current session queue
+  current: 0,        // index in queue
+  flipped: false,
+  mode: 'due',       // 'due' | 'all' | 'course'
+  selectedCourse: null,
+  sessionStats: { again: 0, hard: 0, easy: 0 },
+  view: 'setup',     // 'setup' | 'study' | 'end' | 'manage'
+};
+
+async function loadCards(){
+  const { data } = await sb.from('flashcards').select('*').order('created_at');
+  FC.cards = data || [];
+}
+
+function getDueCards(){
+  const now = new Date();
+  return FC.cards.filter(c => {
+    if(!c.next_review) return true;
+    return new Date(c.next_review) <= now;
+  });
+}
+
+function getCardsByCourse(courseId){
+  return FC.cards.filter(c => c.course_id === courseId);
+}
+
+async function renderFlashcards(){
+  const el = document.getElementById('fc-container');
+  // ensure cards loaded
+  if(FC.cards.length === 0 && S.user) await loadCards();
+
+  if(FC.view === 'setup') renderFCSetup(el);
+  else if(FC.view === 'study') renderFCStudy(el);
+  else if(FC.view === 'end') renderFCEnd(el);
+  else if(FC.view === 'manage') renderFCManage(el);
+}
+
+function renderFCSetup(el){
+  const due = getDueCards();
+  el.innerHTML = `
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
+      <div>
+        <div style="font-size:16px;font-weight:600">Flashcards</div>
+        <div style="font-size:12px;color:var(--text3);margin-top:2px">${FC.cards.length} cards total · ${due.length} due today</div>
+      </div>
+      <div style="display:flex;gap:8px">
+        <button class="btn-sm" onclick="FC.view='manage';renderFlashcards()"><i class="ti ti-plus" style="font-size:13px"></i> Add Cards</button>
+      </div>
+    </div>
+    ${FC.cards.length === 0 ? `
+      <div class="ph-wrap">
+        <div class="ph-icon"><i class="ti ti-cards"></i></div>
+        <div class="ph-title">No cards yet</div>
+        <div class="ph-sub">Add your first flashcard to get started with spaced repetition review.</div>
+        <button class="btn-sm" style="margin-top:16px" onclick="FC.view='manage';renderFlashcards()">+ Add Cards</button>
+      </div>` : `
+    <div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:0.1em;margin-bottom:10px">Study Mode</div>
+    <div class="fc-setup-opts" id="fc-mode-opts">
+      <div class="fc-opt ${FC.mode==='due'?'selected':''}" onclick="selectFCMode('due')">Due Today (${due.length})</div>
+      <div class="fc-opt ${FC.mode==='all'?'selected':''}" onclick="selectFCMode('all')">All Cards (${FC.cards.length})</div>
+      ${COURSES.map(c => {
+        const n = getCardsByCourse(c.id).length;
+        return n > 0 ? `<div class="fc-opt ${FC.mode==='course'&&FC.selectedCourse===c.id?'selected':''}" onclick="selectFCMode('course','${c.id}')">${c.label} (${n})</div>` : '';
+      }).join('')}
+    </div>
+    <button class="btn-primary" style="max-width:200px" onclick="startFCSession()">Start Session →</button>`}
+  `;
+}
+
+function selectFCMode(mode, courseId){
+  FC.mode = mode;
+  FC.selectedCourse = courseId || null;
+  renderFCSetup(document.getElementById('fc-container'));
+}
+
+function startFCSession(){
+  let cards;
+  if(FC.mode === 'due') cards = getDueCards();
+  else if(FC.mode === 'all') cards = [...FC.cards];
+  else cards = getCardsByCourse(FC.selectedCourse);
+
+  if(cards.length === 0){ toast('No cards in this selection','err'); return; }
+  // shuffle
+  FC.queue = cards.sort(() => Math.random() - 0.5);
+  FC.current = 0;
+  FC.flipped = false;
+  FC.sessionStats = { again: 0, hard: 0, easy: 0 };
+  FC.view = 'study';
+  renderFlashcards();
+}
+
+function renderFCStudy(el){
+  const card = FC.queue[FC.current];
+  const course = COURSES.find(c => c.id === card.course_id);
+  const pct = Math.round((FC.current / FC.queue.length) * 100);
+  el.innerHTML = `
+    <div class="fc-wrap">
+      <div class="fc-progress-bar"><div class="fc-progress-fill" style="width:${pct}%"></div></div>
+      <div class="fc-meta">
+        <div class="fc-meta-left">Card <span>${FC.current + 1}</span> of <span>${FC.queue.length}</span></div>
+        <div class="fc-meta-right">
+          <div class="fc-chip new">Again: ${FC.sessionStats.again}</div>
+          <div class="fc-chip due">Hard: ${FC.sessionStats.hard}</div>
+          <div class="fc-chip done">Easy: ${FC.sessionStats.easy}</div>
+        </div>
+      </div>
+      <div class="fc-card ${FC.flipped?'flipped':''}" id="fc-card" onclick="flipCard()">
+        <div class="fc-card-topic">${card.topic_label||''}</div>
+        ${course ? `<div class="fc-card-course" style="background:${course.bg};color:${course.color};border:1px solid ${course.border}">${course.label}</div>` : ''}
+        <div class="fc-card-front">${card.front}</div>
+        <div class="fc-card-back">${card.back}</div>
+        <div class="fc-card-hint">Tap to reveal answer</div>
+      </div>
+      <div class="fc-actions ${FC.flipped?'':'fc-actions-hidden'}" id="fc-actions">
+        <button class="fc-btn again" onclick="rateCard('again')">Again<span>Repeat now</span></button>
+        <button class="fc-btn hard" onclick="rateCard('hard')">Hard<span>+1 day</span></button>
+        <button class="fc-btn easy" onclick="rateCard('easy')">Easy<span>+4 days</span></button>
+      </div>
+      ${!FC.flipped ? `<div style="text-align:center;margin-top:14px"><button class="btn-sm" onclick="flipCard()">Show Answer</button></div>` : ''}
+      <div style="text-align:center;margin-top:14px">
+        <button class="btn-cancel" onclick="FC.view='setup';renderFlashcards()">End Session</button>
+      </div>
+    </div>`;
+}
+
+function flipCard(){
+  FC.flipped = true;
+  renderFCStudy(document.getElementById('fc-container'));
+}
+
+async function rateCard(rating){
+  const card = FC.queue[FC.current];
+  FC.sessionStats[rating]++;
+  const days = FC_INTERVALS[rating];
+  const nextReview = new Date();
+  if(days === 0){ nextReview.setMinutes(nextReview.getMinutes() + 10); }
+  else { nextReview.setDate(nextReview.getDate() + days); }
+  // update in DB
+  await sb.from('flashcards').update({
+    next_review: nextReview.toISOString(),
+    last_rating: rating,
+    review_count: (card.review_count || 0) + 1
+  }).eq('id', card.id);
+  // update local
+  const idx = FC.cards.findIndex(c => c.id === card.id);
+  if(idx > -1){ FC.cards[idx].next_review = nextReview.toISOString(); FC.cards[idx].last_rating = rating; }
+
+  FC.current++;
+  FC.flipped = false;
+  if(FC.current >= FC.queue.length){
+    FC.view = 'end';
+    renderFlashcards();
+  } else {
+    renderFCStudy(document.getElementById('fc-container'));
+  }
+}
+
+function renderFCEnd(el){
+  const total = FC.sessionStats.again + FC.sessionStats.hard + FC.sessionStats.easy;
+  const pct = total > 0 ? Math.round((FC.sessionStats.easy / total) * 100) : 0;
+  el.innerHTML = `
+    <div class="fc-session-end">
+      <div class="ph-icon" style="font-size:44px;opacity:0.8">🎉</div>
+      <h3>Session Complete</h3>
+      <p>You reviewed ${total} card${total !== 1 ? 's' : ''} · ${pct}% easy</p>
+      <div class="fc-stats-row">
+        <div class="fc-stat"><div class="fc-stat-val" style="color:#f87171">${FC.sessionStats.again}</div><div class="fc-stat-lbl">Again</div></div>
+        <div class="fc-stat"><div class="fc-stat-val" style="color:var(--gold2)">${FC.sessionStats.hard}</div><div class="fc-stat-lbl">Hard</div></div>
+        <div class="fc-stat"><div class="fc-stat-val" style="color:var(--green)">${FC.sessionStats.easy}</div><div class="fc-stat-lbl">Easy</div></div>
+      </div>
+      <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap">
+        <button class="btn-primary" style="max-width:160px" onclick="FC.view='setup';renderFlashcards()">Back to Setup</button>
+        <button class="btn-sm" onclick="startFCSession()">Study Again</button>
+      </div>
+    </div>`;
+}
+
+function renderFCManage(el){
+  el.innerHTML = `
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:20px">
+      <button class="btn-cancel" onclick="FC.view='setup';renderFlashcards()"><i class="ti ti-arrow-left" style="font-size:13px"></i> Back</button>
+      <div style="font-size:15px;font-weight:600">Add Flashcards</div>
+    </div>
+    <div class="fc-add-wrap">
+      <h4>New Card</h4>
+      <div class="fc-add-row">
+        <textarea id="fc-front" placeholder="Front — question or term (e.g. What is locus standi?)"></textarea>
+        <textarea id="fc-back" placeholder="Back — answer or definition"></textarea>
+      </div>
+      <div class="fc-add-selects">
+        <select id="fc-course-sel">
+          ${COURSES.map(c => `<option value="${c.id}">${c.name}</option>`).join('')}
+        </select>
+        <input style="flex:1;background:var(--bg3);border:1px solid var(--border2);border-radius:8px;padding:8px 10px;color:var(--text);font-family:'Syne',sans-serif;font-size:12px;outline:none" id="fc-topic-inp" placeholder="Topic label (optional)">
+      </div>
+      <button class="btn-sm" id="fc-add-btn" onclick="addCard()">+ Add Card</button>
+    </div>
+    <div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:0.1em;margin-bottom:10px">${FC.cards.length} Cards in deck</div>
+    <div id="fc-card-list"></div>`;
+  renderCardList();
+}
+
+function renderCardList(){
+  const el = document.getElementById('fc-card-list');
+  if(!el) return;
+  if(FC.cards.length === 0){ el.innerHTML = '<div class="empty-state">No cards yet.</div>'; return; }
+  el.innerHTML = FC.cards.slice().reverse().map(c => {
+    const course = COURSES.find(x => x.id === c.course_id);
+    return `<div class="file-row" style="padding-left:14px;flex-direction:column;align-items:flex-start;gap:4px">
+      <div style="display:flex;width:100%;align-items:center;gap:8px">
+        ${course ? `<span class="cc-tag" style="background:${course.bg};color:${course.color};border:1px solid ${course.border};font-size:9px">${course.label}</span>` : ''}
+        <span style="flex:1;font-size:12px;font-weight:500">${c.front}</span>
+        <button class="file-btn del" onclick="deleteCard('${c.id}')"><i class="ti ti-trash"></i></button>
+      </div>
+      <div style="font-size:11px;color:var(--text3);padding-left:2px">${c.back}</div>
+    </div>`;
+  }).join('');
+}
+
+async function addCard(){
+  const front = document.getElementById('fc-front').value.trim();
+  const back = document.getElementById('fc-back').value.trim();
+  const course_id = document.getElementById('fc-course-sel').value;
+  const topic_label = document.getElementById('fc-topic-inp').value.trim();
+  if(!front || !back){ toast('Front and back are required','err'); return; }
+  const btn = document.getElementById('fc-add-btn');
+  btn.disabled = true; btn.innerHTML = '<span class="spinner"></span>';
+  const { data, error } = await sb.from('flashcards').insert({ front, back, course_id, topic_label, review_count: 0 }).select().single();
+  if(error){ toast('Error: '+error.message,'err'); btn.disabled=false; btn.textContent='+ Add Card'; return; }
+  FC.cards.push(data);
+  document.getElementById('fc-front').value = '';
+  document.getElementById('fc-back').value = '';
+  document.getElementById('fc-topic-inp').value = '';
+  btn.disabled = false; btn.textContent = '+ Add Card';
+  toast('Card added','ok');
+  renderCardList();
+}
+
+async function deleteCard(id){
+  if(!confirm('Delete this card?')) return;
+  await sb.from('flashcards').delete().eq('id', id);
+  FC.cards = FC.cards.filter(c => c.id !== id);
+  renderCardList();
+  toast('Card deleted','ok');
+}
+
 </script>
 </body>
 </html>
