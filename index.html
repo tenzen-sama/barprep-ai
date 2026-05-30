@@ -1396,33 +1396,45 @@ function renderAudio(){
   const files=S.audios[S.audioCourse]||[];
   if(topics.length===0){area.innerHTML='<div class="empty-state">No topics yet — add one above first.</div>';return;}
   area.innerHTML='';
-  let hasAny=false;
+  const list=document.createElement('div');list.className='topics-list';
   topics.forEach(topic=>{
     const tf=files.filter(f=>f.topic_id===topic.id);
-    if(tf.length===0)return;
-    hasAny=true;
-    tf.forEach(f=>{
-      const aid='aud_'+f.id;
-      const card=document.createElement('div');card.className='audio-card';
-      const courseName=COURSES.find(c=>c.id===S.audioCourse)?.label||'';
-      card.innerHTML=`
-        <div class="audio-hdr">
-          <div class="audio-cover"><i class="ti ti-wave-sine"></i></div>
-          <div class="audio-info">
-            <div class="audio-title">${f.name.replace(/\.[^.]+$/,'')}</div>
-            <div class="audio-sub">${topic.name} · ${courseName}</div>
-          </div>
-          <button class="audio-del" onclick="deleteFile('${f.id}','audio','${f.file_path}')" title="Delete"><i class="ti ti-trash"></i></button>
-        </div>
-        <div class="player">
-          <div class="play-btn" id="pb-${aid}" onclick="playAudio('${aid}','${f.file_path}')"><i class="ti ti-player-play"></i></div>
-          <div class="progress-wrap" id="pw-${aid}"><div class="progress-fill" id="pf-${aid}"></div></div>
-          <span class="time-lbl" id="tl-${aid}">0:00</span>
-        </div>`;
-      area.appendChild(card);
-    });
+    const key='aud_'+topic.id;
+    const isOpen=!!S.openTopics[key];
+    const div=document.createElement('div');div.className='topic-block';
+    const courseName=COURSES.find(c=>c.id===S.audioCourse)?.label||'';
+    div.innerHTML=`
+      <div class="topic-hdr" onclick="toggleTopic('${key}',this)">
+        <i class="ti ti-folder"></i>
+        <span class="topic-hdr-name">${topic.name}</span>
+        <span class="topic-hdr-count">${tf.length} file${tf.length!==1?'s':''}</span>
+        <i class="ti ti-chevron-down topic-hdr-chev ${isOpen?'open':''}"></i>
+      </div>
+      <div class="topic-files ${isOpen?'open':''}" id="tfiles-${key}">
+        ${tf.length===0
+          ?'<div class="empty-state" style="font-size:11px;padding:12px">No audio yet — upload below.</div>'
+          :tf.map(f=>{
+            const aid='aud_'+f.id;
+            return `<div style="padding:12px 14px 12px 38px;border-bottom:1px solid var(--border)">
+              <div class="audio-hdr" style="margin-bottom:10px">
+                <div class="audio-cover"><i class="ti ti-wave-sine"></i></div>
+                <div class="audio-info">
+                  <div class="audio-title">${f.name.replace(/\.[^.]+$/,'')}</div>
+                  <div class="audio-sub">${topic.name} · ${courseName}</div>
+                </div>
+                <button class="audio-del" onclick="deleteFile('${f.id}','audio','${f.file_path}')" title="Delete"><i class="ti ti-trash"></i></button>
+              </div>
+              <div class="player">
+                <div class="play-btn" id="pb-${aid}" onclick="playAudio('${aid}','${f.file_path}')"><i class="ti ti-player-play"></i></div>
+                <div class="progress-wrap" id="pw-${aid}"><div class="progress-fill" id="pf-${aid}"></div></div>
+                <span class="time-lbl" id="tl-${aid}">0:00</span>
+              </div>
+            </div>`;
+          }).join('')}
+      </div>`;
+    list.appendChild(div);
   });
-  if(!hasAny)area.innerHTML='<div class="empty-state">No audio files yet — upload below.</div>';
+  area.appendChild(list);
 }
 
 // ===== TOGGLE TOPIC =====
@@ -1693,7 +1705,9 @@ JSON format:
   ]
 }`;
 
-    const resp = await fetch('https://api.anthropic.com/v1/messages', {
+    // Use Cloudflare Worker proxy to avoid CORS
+    const PROXY_URL = 'https://barprep-proxy.tenzen-sama.workers.dev';
+    const resp = await fetch(PROXY_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
