@@ -1104,19 +1104,54 @@ const PAGE={
   drafting:{title:'Drafting Practice',sub:'AI-evaluated legal document drafting'},
 };
 
-let S={
-  view:'dashboard',
-  pdfCourse:'clp',
-  audioCourse:'clp',
-  user:null,
-  topics:{},
-  pdfs:{},
-  audios:{},
-  openTopics:{},
-  audioEls:{},
-  pendingFile:null,
-  pendingType:null,
+// ===== SINGLE SOURCE OF TRUTH =====
+// DB is always authoritative. Every write calls refreshData() after.
+// S is a read-only cache populated by refreshData(). Never mutate S directly.
+let S = {
+  view: 'dashboard',
+  pdfCourse: 'clp',
+  audioCourse: 'clp',
+  user: null,
+  topics: {},    // {courseId: [{id, name, course_id}]}
+  pdfs: {},      // {courseId: [{id, name, file_path, size_label, topic_id, topics:{name}}]}
+  audios: {},    // {courseId: [{id, name, file_path, topic_id, topics:{name}}]}
+  openTopics: {},
+  audioEls: {},
+  pendingFile: null,
+  pendingType: null,
 };
+
+// ===== SINGLE REFRESH FUNCTION =====
+async function refreshData() {
+  const [topicsRes, pdfsRes, audiosRes] = await Promise.all([
+    sb.from('topics').select('*').order('created_at'),
+    sb.from('pdfs').select('*,topics(name)').order('uploaded_at'),
+    sb.from('audio_files').select('*,topics(name)').order('uploaded_at'),
+  ]);
+
+  // rebuild topics
+  S.topics = {};
+  (topicsRes.data || []).forEach(t => {
+    if (!S.topics[t.course_id]) S.topics[t.course_id] = [];
+    S.topics[t.course_id].push(t);
+  });
+
+  // rebuild pdfs
+  S.pdfs = {};
+  (pdfsRes.data || []).forEach(f => {
+    if (!S.pdfs[f.course_id]) S.pdfs[f.course_id] = [];
+    S.pdfs[f.course_id].push(f);
+  });
+
+  // rebuild audios
+  S.audios = {};
+  (audiosRes.data || []).forEach(f => {
+    if (!S.audios[f.course_id]) S.audios[f.course_id] = [];
+    S.audios[f.course_id].push(f);
+  });
+
+  updateBadges();
+}
 
 // ===== THEME =====
 function setTheme(t){
@@ -1143,6 +1178,23 @@ function toggleMobileSidebar(){
   o.classList.toggle('open');
 }
 
+// ===== SIDEBAR COLLAPSE =====
+let sidebarCollapsed=false;
+function toggleSidebar(){
+  sidebarCollapsed=!sidebarCollapsed;
+  const sb2=document.getElementById('sidebar');
+  const btn=document.getElementById('toggle-sidebar-btn');
+  const icon=document.getElementById('toggle-sidebar-icon');
+  sb2.classList.toggle('collapsed',sidebarCollapsed);
+  btn.classList.toggle('collapsed',sidebarCollapsed);
+  icon.className=sidebarCollapsed?'ti ti-chevron-right':'ti ti-chevron-left';
+  localStorage.setItem('bp-sidebar',sidebarCollapsed?'1':'0');
+}
+document.addEventListener('keydown',e=>{
+  if((e.ctrlKey||e.metaKey)&&e.key==='.'){e.preventDefault();toggleSidebar();}
+});
+(function(){if(localStorage.getItem('bp-sidebar')==='1')toggleSidebar();})();
+
 // ===== NAV SECTION TOGGLE =====
 function toggleNavSection(id){
   const body=document.getElementById('sec-'+id);
@@ -1158,8 +1210,7 @@ function switchAuthTab(tab){
   document.getElementById('register-form').style.display=tab==='register'?'block':'none';
   document.getElementById('tab-login').className='auth-tab'+(tab==='login'?' active':'');
   document.getElementById('tab-register').className='auth-tab'+(tab==='register'?' active':'');
-  document.getElementById('auth-error').textContent='';
-  document.getElementById('auth-error').className='auth-msg';
+  setAuthMsg('','');
 }
 
 async function doLogin(){
@@ -1182,8 +1233,8 @@ async function doRegister(){
   btn.disabled=true;btn.innerHTML='<span class="spinner"></span>';
   const{error}=await sb.auth.signUp({email,password:pass,options:{data:{full_name:name}}});
   btn.disabled=false;btn.textContent='Create Account';
-  if(error){setAuthMsg(error.message,'err');}
-  else{setAuthMsg('Account created! Check your email to confirm.','ok');}
+  if(error)setAuthMsg(error.message,'err');
+  else setAuthMsg('Account created! Check your email to confirm.','ok');
 }
 
 function setAuthMsg(msg,type){
@@ -1212,7 +1263,8 @@ sb.auth.onAuthStateChange(async(event,session)=>{
     document.getElementById('user-email').textContent=session.user.email;
     document.getElementById('dash-name').textContent=name.split(' ')[0];
     document.getElementById('session-chip').textContent='Active session';
-    await loadAll();
+    await refreshData();
+    await loadCards();
     renderDashboard();
   }
 });
@@ -1221,7 +1273,6 @@ sb.auth.onAuthStateChange(async(event,session)=>{
 document.querySelectorAll('.nav-item[data-view]').forEach(el=>{
   el.addEventListener('click',()=>{
     switchView(el.dataset.view);
-    // close mobile sidebar if open
     document.getElementById('sidebar').classList.remove('mobile-open');
     document.getElementById('mobile-overlay').classList.remove('open');
   });
@@ -1244,39 +1295,7 @@ function switchView(v){
   if(v==='flashcards')renderFlashcards();
 }
 
-// ===== LOAD =====
-async function loadAll(){
-  await Promise.all([loadTopics(),loadPdfs(),loadAudios()]);
-  updateBadges();
-}
-
-async function loadTopics(){
-  const{data}=await sb.from('topics').select('*').order('created_at');
-  S.topics={};
-  (data||[]).forEach(t=>{
-    if(!S.topics[t.course_id])S.topics[t.course_id]=[];
-    S.topics[t.course_id].push(t);
-  });
-}
-
-async function loadPdfs(){
-  const{data}=await sb.from('pdfs').select('*,topics(name)').order('uploaded_at');
-  S.pdfs={};
-  (data||[]).forEach(f=>{
-    if(!S.pdfs[f.course_id])S.pdfs[f.course_id]=[];
-    S.pdfs[f.course_id].push(f);
-  });
-}
-
-async function loadAudios(){
-  const{data}=await sb.from('audio_files').select('*,topics(name)').order('uploaded_at');
-  S.audios={};
-  (data||[]).forEach(f=>{
-    if(!S.audios[f.course_id])S.audios[f.course_id]=[];
-    S.audios[f.course_id].push(f);
-  });
-}
-
+// ===== BADGES =====
 function updateBadges(){
   const pc=Object.values(S.pdfs).flat().length;
   const ac=Object.values(S.audios).flat().length;
@@ -1295,39 +1314,31 @@ function renderDashboard(){
 }
 
 function renderContinueStudy(){
-  const el = document.getElementById('dash-continue-study');
-  if(!el) return;
-  // Find course with most recent PDF activity
-  let bestCourse = null, bestPdf = null;
-  COURSES.forEach(course => {
-    const pdfs = S.pdfs[course.id] || [];
-    if(pdfs.length > 0 && !bestPdf){
-      bestCourse = course;
-      bestPdf = pdfs[pdfs.length - 1];
-    }
+  const el=document.getElementById('dash-continue-study');
+  if(!el)return;
+  let bestCourse=null,bestPdf=null;
+  COURSES.forEach(course=>{
+    const pdfs=S.pdfs[course.id]||[];
+    if(pdfs.length>0&&!bestPdf){bestCourse=course;bestPdf=pdfs[pdfs.length-1];}
   });
-  if(!bestCourse || !bestPdf){
-    el.innerHTML = `<div class="continue-empty"><i class="ti ti-book"></i>No study material yet — upload a PDF to get started.</div>`;
+  if(!bestCourse||!bestPdf){
+    el.innerHTML=`<div class="continue-empty"><i class="ti ti-book"></i>No study material yet — upload a PDF to get started.</div>`;
     return;
   }
-  const topics = S.topics[bestCourse.id] || [];
-  const pdfs = S.pdfs[bestCourse.id] || [];
-  const totalTopics = topics.length;
-  // estimate completion from flashcard review data
-  const courseCards = FC.cards.filter(c => c.course_id === bestCourse.id);
-  const reviewedCards = courseCards.filter(c => c.review_count > 0).length;
-  const pct = courseCards.length > 0 ? Math.round((reviewedCards / courseCards.length) * 100) : 0;
-  const topicName = bestPdf.topics ? bestPdf.topics.name : (topics[0] ? topics[0].name : 'First Topic');
-  const lastStudied = bestPdf.uploaded_at ? timeAgo(bestPdf.uploaded_at) : 'recently';
-
-  el.innerHTML = `
+  const pdfs=S.pdfs[bestCourse.id]||[];
+  const courseCards=FC.cards.filter(c=>c.course_id===bestCourse.id);
+  const reviewedCards=courseCards.filter(c=>c.review_count>0).length;
+  const pct=courseCards.length>0?Math.round((reviewedCards/courseCards.length)*100):0;
+  const topicName=bestPdf.topics?bestPdf.topics.name:'First Topic';
+  const lastStudied=bestPdf.uploaded_at?timeAgo(bestPdf.uploaded_at):'recently';
+  el.innerHTML=`
     <div class="section-label">Continue Studying</div>
     <div class="continue-card" onclick="switchView('flashcards')">
       <div class="continue-card-icon study"><i class="ti ti-book-open"></i></div>
       <div class="continue-card-body">
         <div class="continue-card-label">Continue Studying</div>
         <div class="continue-card-title">${bestCourse.name}</div>
-        <div class="continue-card-sub">Current Topic: ${topicName} · Last studied ${lastStudied}</div>
+        <div class="continue-card-sub">Topic: ${topicName} · Last uploaded ${lastStudied}</div>
         <div class="continue-bar"><div class="continue-bar-fill" style="width:${pct}%"></div></div>
         <div class="continue-bar-label">${pct}% reviewed · ${pdfs.length} PDF${pdfs.length!==1?'s':''} uploaded</div>
       </div>
@@ -1336,27 +1347,19 @@ function renderContinueStudy(){
 }
 
 function renderContinueAudio(){
-  const el = document.getElementById('dash-continue-audio');
-  if(!el) return;
-  // Find first course with audio
-  let bestCourse = null, bestAudio = null;
-  COURSES.forEach(course => {
-    const audios = S.audios[course.id] || [];
-    if(audios.length > 0 && !bestAudio){
-      bestCourse = course;
-      bestAudio = audios[audios.length - 1];
-    }
+  const el=document.getElementById('dash-continue-audio');
+  if(!el)return;
+  let bestCourse=null,bestAudio=null;
+  COURSES.forEach(course=>{
+    const audios=S.audios[course.id]||[];
+    if(audios.length>0&&!bestAudio){bestCourse=course;bestAudio=audios[audios.length-1];}
   });
   if(!bestAudio){
-    el.innerHTML = `
-      <div class="continue-empty" style="cursor:pointer" onclick="switchView('audio')">
-        <i class="ti ti-headphones"></i>
-        <span>No audio overviews yet — <u>upload one</u> to enable audio revision.</span>
-      </div>`;
+    el.innerHTML=`<div class="continue-empty" style="cursor:pointer" onclick="switchView('audio')"><i class="ti ti-headphones"></i><span>No audio overviews yet — <u>upload one</u> to enable audio revision.</span></div>`;
     return;
   }
-  const topicName = bestAudio.topics ? bestAudio.topics.name : 'Overview';
-  el.innerHTML = `
+  const topicName=bestAudio.topics?bestAudio.topics.name:'Overview';
+  el.innerHTML=`
     <div class="continue-card" onclick="switchView('audio')">
       <div class="continue-card-icon audio"><i class="ti ti-headphones"></i></div>
       <div class="continue-card-body">
@@ -1369,40 +1372,39 @@ function renderContinueAudio(){
 }
 
 function renderCourseCards(){
-  const c = document.getElementById('dash-courses');
-  if(!c) return;
-  c.innerHTML = '';
-  COURSES.forEach(course => {
-    const topics = S.topics[course.id] || [];
-    const pdfs = S.pdfs[course.id] || [];
-    const totalTopics = topics.length;
-    // topics with at least 1 PDF = "active" topics
-    const activeTopics = topics.filter(t => pdfs.some(p => p.topic_id === t.id)).length;
-    const pct = totalTopics > 0 ? Math.round((activeTopics / totalTopics) * 100) : 0;
-
-    c.innerHTML += `<div class="course-card" onclick="switchView('pdfs');setTimeout(()=>setCourse('pdf','${course.id}'),60)">
+  const c=document.getElementById('dash-courses');
+  if(!c)return;
+  c.innerHTML='';
+  COURSES.forEach(course=>{
+    const topics=S.topics[course.id]||[];
+    const pdfs=S.pdfs[course.id]||[];
+    const totalTopics=topics.length;
+    const activeTopics=topics.filter(t=>pdfs.some(p=>p.topic_id===t.id)).length;
+    const pct=totalTopics>0?Math.round((activeTopics/totalTopics)*100):0;
+    c.innerHTML+=`<div class="course-card" onclick="switchView('pdfs');setTimeout(()=>setCourse('pdf','${course.id}'),60)">
       <div class="cc-tag" style="background:${course.bg};color:${course.color};border:1px solid ${course.border}">${course.label}</div>
       <div class="cc-name">${course.name}</div>
       <div class="cc-pct" style="color:${course.color}">${pct}%</div>
-      <div class="cc-topics">${activeTopics} / ${totalTopics || '—'} Topics with material</div>
+      <div class="cc-topics">${activeTopics} / ${totalTopics||'—'} Topics with material</div>
       <div class="cc-bar"><div class="cc-fill" style="width:${pct}%;background:${course.color}"></div></div>
     </div>`;
   });
 }
 
 function timeAgo(dateStr){
-  const diff = Date.now() - new Date(dateStr).getTime();
-  const mins = Math.floor(diff / 60000);
-  if(mins < 60) return mins <= 1 ? 'just now' : mins + ' minutes ago';
-  const hrs = Math.floor(mins / 60);
-  if(hrs < 24) return hrs === 1 ? '1 hour ago' : hrs + ' hours ago';
-  const days = Math.floor(hrs / 24);
-  return days === 1 ? 'yesterday' : days + ' days ago';
+  const diff=Date.now()-new Date(dateStr).getTime();
+  const mins=Math.floor(diff/60000);
+  if(mins<60)return mins<=1?'just now':mins+' minutes ago';
+  const hrs=Math.floor(mins/60);
+  if(hrs<24)return hrs===1?'1 hour ago':hrs+' hours ago';
+  const days=Math.floor(hrs/24);
+  return days===1?'yesterday':days+' days ago';
 }
 
 // ===== COURSE TABS =====
 function buildTabs(containerId,activeCourse,onSelect){
   const c=document.getElementById(containerId);
+  if(!c)return;
   c.innerHTML='';
   COURSES.forEach(course=>{
     const t=document.createElement('div');
@@ -1418,22 +1420,102 @@ function setCourse(type,id){
   else{S.audioCourse=id;renderAudio();}
 }
 
-// ===== ADD TOPIC (FIX: re-fetch from DB) =====
+// ===== TOPIC MENU =====
+function toggleTopicMenu(menuId,btnEl){
+  document.querySelectorAll('.topic-dropdown.open').forEach(m=>{
+    if(m.id!==menuId)m.classList.remove('open');
+  });
+  const menu=document.getElementById(menuId);
+  if(!menu)return;
+  const isOpen=menu.classList.contains('open');
+  if(isOpen){menu.classList.remove('open');return;}
+  if(btnEl){
+    const rect=btnEl.getBoundingClientRect();
+    menu.style.top=(rect.bottom+4)+'px';
+    menu.style.left=Math.max(4,rect.right-140)+'px';
+  }
+  menu.classList.add('open');
+}
+document.addEventListener('click',()=>{
+  document.querySelectorAll('.topic-dropdown.open').forEach(m=>m.classList.remove('open'));
+});
+
+// ===== ADD TOPIC =====
+// Topics are shared — one topic covers both PDFs and audio for the same course
 async function addTopic(type){
   const inputId=type==='pdf'?'new-topic-name':'new-audio-topic-name';
   const btnId=type==='pdf'?'btn-add-topic':'btn-add-audio-topic';
   const courseId=type==='pdf'?S.pdfCourse:S.audioCourse;
-  const name=document.getElementById(inputId).value.trim();
+  const name=document.getElementById(inputId)?.value.trim();
   if(!name){toast('Enter a topic name first','err');return;}
   const btn=document.getElementById(btnId);
   btn.disabled=true;btn.innerHTML='<span class="spinner"></span>';
   const{error}=await sb.from('topics').insert({course_id:courseId,name});
   if(error){toast('Error: '+error.message,'err');btn.disabled=false;btn.textContent='+ Add Topic';return;}
-  // Re-fetch all topics to guarantee sync
-  await loadTopics();
   document.getElementById(inputId).value='';
   btn.disabled=false;btn.textContent='+ Add Topic';
-  toast('Topic "'+name+'" added','ok');
+  await refreshData();
+  toast('"'+name+'" added','ok');
+  if(type==='pdf')renderPdfs();else renderAudio();
+}
+
+// ===== RENAME TOPIC =====
+function startRenameTopic(topicId,currentName,type){
+  document.querySelectorAll('.topic-dropdown.open').forEach(m=>m.classList.remove('open'));
+  const nameEl=document.getElementById('tname-'+topicId);
+  if(!nameEl)return;
+  const input=document.createElement('input');
+  input.className='rename-input';
+  input.value=currentName;
+  input.onclick=e=>e.stopPropagation();
+  let saved=false;
+  const save=async()=>{
+    if(saved)return;saved=true;
+    const newName=input.value.trim();
+    if(!newName||newName===currentName){
+      await refreshData();
+      if(type==='pdf')renderPdfs();else renderAudio();
+      return;
+    }
+    const{error}=await sb.from('topics').update({name:newName}).eq('id',topicId);
+    if(error){toast('Rename failed','err');}
+    else toast('Renamed to "'+newName+'"','ok');
+    await refreshData();
+    if(type==='pdf')renderPdfs();else renderAudio();
+  };
+  input.onkeydown=async e=>{
+    if(e.key==='Enter'){e.preventDefault();await save();}
+    if(e.key==='Escape'){saved=true;await refreshData();if(type==='pdf')renderPdfs();else renderAudio();}
+  };
+  input.onblur=save;
+  nameEl.replaceWith(input);
+  setTimeout(()=>{input.focus();input.select();},10);
+}
+
+// ===== DELETE TOPIC =====
+async function deleteTopic(topicId,type){
+  const courseId=type==='pdf'?S.pdfCourse:S.audioCourse;
+  const topic=(S.topics[courseId]||[]).find(t=>t.id===topicId);
+  const name=topic?.name||'this folder';
+  const pdfFiles=(S.pdfs[courseId]||[]).filter(f=>f.topic_id===topicId);
+  const audioFiles=(S.audios[courseId]||[]).filter(f=>f.topic_id===topicId);
+  const totalFiles=pdfFiles.length+audioFiles.length;
+  const msg=totalFiles>0
+    ?`Delete "${name}" and its ${totalFiles} file(s)? This cannot be undone.`
+    :`Delete empty folder "${name}"?`;
+  if(!confirm(msg))return;
+  // Delete files from storage
+  if(pdfFiles.length>0){
+    await sb.storage.from('pdfs').remove(pdfFiles.map(f=>f.file_path));
+    await sb.from('pdfs').delete().eq('topic_id',topicId);
+  }
+  if(audioFiles.length>0){
+    await sb.storage.from('audio').remove(audioFiles.map(f=>f.file_path));
+    await sb.from('audio_files').delete().eq('topic_id',topicId);
+  }
+  await sb.from('topics').delete().eq('id',topicId);
+  await refreshData();
+  toast('"'+name+'" deleted','ok');
   if(type==='pdf')renderPdfs();else renderAudio();
 }
 
@@ -1441,9 +1523,10 @@ async function addTopic(type){
 function renderPdfs(){
   buildTabs('pdf-tabs',S.pdfCourse,id=>{S.pdfCourse=id;renderPdfs();});
   const area=document.getElementById('pdf-topics');
+  if(!area)return;
   const topics=S.topics[S.pdfCourse]||[];
   const files=S.pdfs[S.pdfCourse]||[];
-  if(topics.length===0){area.innerHTML='<div class="empty-state">No topics yet — add one above first.</div>';return;}
+  if(topics.length===0){area.innerHTML='<div class="empty-state">No topics yet — add one above.</div>';return;}
   area.innerHTML='';
   const list=document.createElement('div');list.className='topics-list';
   topics.forEach(topic=>{
@@ -1485,10 +1568,9 @@ function renderPdfs(){
 // ===== PDF PANEL =====
 function openPdfPanel(path,name){
   const{data}=sb.storage.from('pdfs').getPublicUrl(path);
-  const url=data.publicUrl;
   document.getElementById('pdf-panel-title').textContent=name;
-  document.getElementById('pdf-panel-link').href=url;
-  document.getElementById('pdf-panel-frame').src=url;
+  document.getElementById('pdf-panel-link').href=data.publicUrl;
+  document.getElementById('pdf-panel-frame').src=data.publicUrl;
   document.getElementById('pdf-panel').classList.add('open');
   document.getElementById('pdf-overlay').classList.add('open');
 }
@@ -1502,27 +1584,28 @@ function closePdfPanel(){
 function renderAudio(){
   buildTabs('audio-tabs',S.audioCourse,id=>{S.audioCourse=id;renderAudio();});
   const area=document.getElementById('audio-topics');
+  if(!area)return;
   const topics=S.topics[S.audioCourse]||[];
   const files=S.audios[S.audioCourse]||[];
-  if(topics.length===0){area.innerHTML='<div class="empty-state">No topics yet — add one above first.</div>';return;}
+  if(topics.length===0){area.innerHTML='<div class="empty-state">No topics yet — add one above.</div>';return;}
   area.innerHTML='';
   const list=document.createElement('div');list.className='topics-list';
   topics.forEach(topic=>{
     const tf=files.filter(f=>f.topic_id===topic.id);
     const key='aud_'+topic.id;
     const isOpen=!!S.openTopics[key];
-    const div=document.createElement('div');div.className='topic-block';
     const courseName=COURSES.find(c=>c.id===S.audioCourse)?.label||'';
+    const div=document.createElement('div');div.className='topic-block';
     div.innerHTML=`
       <div class="topic-hdr" onclick="toggleTopic('${key}',this)">
         <i class="ti ti-folder"></i>
         <span class="topic-hdr-name" id="tname-${topic.id}">${topic.name}</span>
         <span class="topic-hdr-count">${tf.length} file${tf.length!==1?'s':''}</span>
         <div class="topic-hdr-menu" onclick="event.stopPropagation()">
-          <button class="topic-menu-btn" onclick="toggleTopicMenu('tmenu-${topic.id}',this)"><i class="ti ti-dots-vertical"></i></button>
-          <div class="topic-dropdown" id="tmenu-${topic.id}">
-            <div class="topic-dd-item" onclick="startRenameTopic('${topic.id}','${topic.name}','pdf')"><i class="ti ti-pencil"></i>Rename</div>
-            <div class="topic-dd-item danger" onclick="deleteTopic('${topic.id}','pdf')"><i class="ti ti-trash"></i>Delete folder</div>
+          <button class="topic-menu-btn" onclick="toggleTopicMenu('tmenu-a-${topic.id}',this)"><i class="ti ti-dots-vertical"></i></button>
+          <div class="topic-dropdown" id="tmenu-a-${topic.id}">
+            <div class="topic-dd-item" onclick="startRenameTopic('${topic.id}','${topic.name}','audio')"><i class="ti ti-pencil"></i>Rename</div>
+            <div class="topic-dd-item danger" onclick="deleteTopic('${topic.id}','audio')"><i class="ti ti-trash"></i>Delete folder</div>
           </div>
         </div>
         <i class="ti ti-chevron-down topic-hdr-chev ${isOpen?'open':''}"></i>
@@ -1543,7 +1626,7 @@ function renderAudio(){
               </div>
               <div class="player">
                 <div class="play-btn" id="pb-${aid}" onclick="playAudio('${aid}','${f.file_path}')"><i class="ti ti-player-play"></i></div>
-                <div class="progress-wrap" id="pw-${aid}"><div class="progress-fill" id="pf-${aid}"></div></div>
+                <div class="progress-wrap"><div class="progress-fill" id="pf-${aid}"></div></div>
                 <span class="time-lbl" id="tl-${aid}">0:00</span>
               </div>
             </div>`;
@@ -1554,7 +1637,7 @@ function renderAudio(){
   area.appendChild(list);
 }
 
-// ===== TOGGLE TOPIC =====
+// ===== TOGGLE TOPIC OPEN/CLOSE =====
 function toggleTopic(key,hdr){
   S.openTopics[key]=!S.openTopics[key];
   const files=document.getElementById('tfiles-'+key);
@@ -1574,18 +1657,22 @@ function playAudio(aid,path){
     S.audioEls[aid]=a;
     a.ontimeupdate=()=>{
       if(!a.duration)return;
-      pf.style.width=Math.round((a.currentTime/a.duration)*100)+'%';
+      if(pf)pf.style.width=Math.round((a.currentTime/a.duration)*100)+'%';
       const m=Math.floor(a.currentTime/60),s=Math.floor(a.currentTime%60);
-      tl.textContent=m+':'+s.toString().padStart(2,'0');
+      if(tl)tl.textContent=m+':'+s.toString().padStart(2,'0');
     };
-    a.onended=()=>{pb.innerHTML='<i class="ti ti-player-play"></i>';pf.style.width='0%';tl.textContent='0:00';};
+    a.onended=()=>{
+      if(pb)pb.innerHTML='<i class="ti ti-player-play"></i>';
+      if(pf)pf.style.width='0%';
+      if(tl)tl.textContent='0:00';
+    };
   }
   const a=S.audioEls[aid];
-  if(a.paused){a.play();pb.innerHTML='<i class="ti ti-player-pause"></i>';}
-  else{a.pause();pb.innerHTML='<i class="ti ti-player-play"></i>';}
+  if(a.paused){a.play();if(pb)pb.innerHTML='<i class="ti ti-player-pause"></i>';}
+  else{a.pause();if(pb)pb.innerHTML='<i class="ti ti-player-play"></i>';}
 }
 
-// ===== UPLOAD =====
+// ===== FILE UPLOAD =====
 function handleFileUpload(e,type){
   const file=e.target.files[0];if(!file)return;
   S.pendingFile=file;S.pendingType=type;
@@ -1614,120 +1701,89 @@ async function confirmUpload(){
   const path=courseId+'/'+topicId+'/'+Date.now()+'_'+S.pendingFile.name.replace(/[^a-zA-Z0-9._-]/g,'_');
   const{error:upErr}=await sb.storage.from(bucket).upload(path,S.pendingFile,{upsert:false});
   if(upErr){toast('Upload failed: '+upErr.message,'err');btn.disabled=false;btn.textContent='Upload';return;}
-  const kb=Math.round(S.pendingFile.size/1024);
-  const sizeLabel=kb>1024?(kb/1024).toFixed(1)+' MB':kb+' KB';
   const table=S.pendingType==='pdf'?'pdfs':'audio_files';
   const row={topic_id:topicId,course_id:courseId,name:S.pendingFile.name,file_path:path};
-  if(S.pendingType==='pdf')row.size_label=sizeLabel;
-  const{data,error:dbErr}=await sb.from(table).insert(row).select('*,topics(name)').single();
+  if(S.pendingType==='pdf'){
+    const kb=Math.round(S.pendingFile.size/1024);
+    row.size_label=kb>1024?(kb/1024).toFixed(1)+' MB':kb+' KB';
+  }
+  const{error:dbErr}=await sb.from(table).insert(row);
   if(dbErr){toast('DB error: '+dbErr.message,'err');btn.disabled=false;btn.textContent='Upload';return;}
-  if(S.pendingType==='pdf'){if(!S.pdfs[courseId])S.pdfs[courseId]=[];S.pdfs[courseId].push(data);}
-  else{if(!S.audios[courseId])S.audios[courseId]=[];S.audios[courseId].push(data);}
+  await refreshData();
   toast(S.pendingFile.name+' uploaded ✓','ok');
   btn.disabled=false;btn.textContent='Upload';
-  closeModal();updateBadges();
+  closeModal();
   if(S.pendingType==='pdf')renderPdfs();else renderAudio();
 }
 
-// ===== DELETE =====
+// ===== DELETE FILE =====
 async function deleteFile(id,type,path){
-  if(!confirm('Delete this file? This cannot be undone.'))return;
+  if(!confirm('Delete this file?'))return;
   const bucket=type==='pdf'?'pdfs':'audio';
   const table=type==='pdf'?'pdfs':'audio_files';
-  const courseId=type==='pdf'?S.pdfCourse:S.audioCourse;
   await sb.storage.from(bucket).remove([path]);
   await sb.from(table).delete().eq('id',id);
-  if(type==='pdf'){S.pdfs[courseId]=(S.pdfs[courseId]||[]).filter(f=>f.id!==id);renderPdfs();}
-  else{S.audios[courseId]=(S.audios[courseId]||[]).filter(f=>f.id!==id);renderAudio();}
-  updateBadges();toast('File deleted','ok');
+  await refreshData();
+  toast('File deleted','ok');
+  if(type==='pdf')renderPdfs();else renderAudio();
 }
-
-// ===== SIDEBAR COLLAPSE =====
-let sidebarCollapsed = false;
-function toggleSidebar(){
-  sidebarCollapsed = !sidebarCollapsed;
-  const sb = document.getElementById('sidebar');
-  const btn = document.getElementById('toggle-sidebar-btn');
-  const icon = document.getElementById('toggle-sidebar-icon');
-  sb.classList.toggle('collapsed', sidebarCollapsed);
-  btn.classList.toggle('collapsed', sidebarCollapsed);
-  icon.className = sidebarCollapsed ? 'ti ti-chevron-right' : 'ti ti-chevron-left';
-  localStorage.setItem('bp-sidebar', sidebarCollapsed ? '1' : '0');
-}
-document.addEventListener('keydown', e => {
-  if((e.ctrlKey || e.metaKey) && e.key === '.') { e.preventDefault(); toggleSidebar(); }
-});
-(function(){
-  if(localStorage.getItem('bp-sidebar') === '1') toggleSidebar();
-})();
-
 
 // ===== FLASHCARD ENGINE =====
-const FC_INTERVALS = { again: 0, hard: 1, easy: 4 };
-
-let FC = {
-  cards: [], queue: [], current: 0, flipped: false,
-  mode: 'due', selectedCourse: null,
-  sessionStats: { again: 0, hard: 0, easy: 0 },
-  view: 'setup',   // setup | study | end | manage | generate | review
-  activeTab: 'study', // study | generate
-  selectedPdf: null,
-  reviewQueue: [],  // [{front,back,course_id,topic_label,status:'pending'|'approved'|'rejected',editing:false}]
-  generating: false,
+const FC_INTERVALS={again:0,hard:1,easy:4};
+let FC={
+  cards:[],queue:[],current:0,flipped:false,
+  mode:'due',selectedCourse:null,
+  sessionStats:{again:0,hard:0,easy:0},
+  view:'setup',activeTab:'study',
+  selectedPdf:null,reviewQueue:[],
 };
 
 async function loadCards(){
-  const { data } = await sb.from('flashcards').select('*').order('created_at');
-  FC.cards = data || [];
+  const{data}=await sb.from('flashcards').select('*').order('created_at');
+  FC.cards=data||[];
 }
 
 function getDueCards(){
-  const now = new Date();
-  return FC.cards.filter(c => !c.next_review || new Date(c.next_review) <= now);
+  const now=new Date();
+  return FC.cards.filter(c=>!c.next_review||new Date(c.next_review)<=now);
 }
-
-function getCardsByCourse(courseId){
-  return FC.cards.filter(c => c.course_id === courseId);
-}
+function getCardsByCourse(courseId){return FC.cards.filter(c=>c.course_id===courseId);}
 
 async function renderFlashcards(){
-  const el = document.getElementById('fc-container');
-  if(FC.cards.length === 0 && S.user) await loadCards();
-  if(FC.view === 'study') renderFCStudy(el);
-  else if(FC.view === 'end') renderFCEnd(el);
-  else if(FC.view === 'manage') renderFCManage(el);
-  else if(FC.view === 'generate') renderFCGenerate(el);
-  else if(FC.view === 'review') renderFCReview(el);
+  const el=document.getElementById('fc-container');
+  if(!el)return;
+  if(S.user&&FC.cards.length===0)await loadCards();
+  FC.view=FC.view||'setup';
+  if(FC.view==='study')renderFCStudy(el);
+  else if(FC.view==='end')renderFCEnd(el);
+  else if(FC.view==='manage')renderFCManage(el);
+  else if(FC.view==='generate')renderFCGenerate(el);
+  else if(FC.view==='review')renderFCReview(el);
   else renderFCSetup(el);
 }
 
-// ===== SETUP =====
 function renderFCSetup(el){
-  const due = getDueCards();
-  el.innerHTML = `
+  const due=getDueCards();
+  el.innerHTML=`
     <div class="fc-tabs">
       <div class="fc-tab ${FC.activeTab==='study'?'active':''}" onclick="setFCTab('study')">Study</div>
       <div class="fc-tab ${FC.activeTab==='generate'?'active':''}" onclick="setFCTab('generate')">Generate from PDF</div>
       <div class="fc-tab" onclick="FC.view='manage';renderFlashcards()">Manage Cards</div>
     </div>
-    ${FC.activeTab === 'generate' ? renderFCGenerateTab() : renderFCStudyTab(due)}`;
+    ${FC.activeTab==='generate'?renderFCGenerateTab():renderFCStudyTab(due)}`;
 }
 
-function setFCTab(tab){
-  FC.activeTab = tab;
-  renderFCSetup(document.getElementById('fc-container'));
-}
+function setFCTab(tab){FC.activeTab=tab;renderFCSetup(document.getElementById('fc-container'));}
 
 function renderFCStudyTab(due){
-  if(FC.cards.length === 0) return `
+  if(FC.cards.length===0)return`
     <div class="ph-wrap">
       <div class="ph-icon"><i class="ti ti-cards"></i></div>
       <div class="ph-title">No cards yet</div>
       <div class="ph-sub">Use "Generate from PDF" to create cards from your uploaded materials.</div>
       <button class="btn-sm" style="margin-top:16px" onclick="setFCTab('generate')">Generate Cards →</button>
     </div>`;
-
-  return `
+  return`
     <div style="margin-bottom:14px">
       <div style="font-size:13px;color:var(--text2)">${FC.cards.length} cards total · <span style="color:var(--neon2);font-family:'Space Mono',monospace">${due.length} due today</span></div>
     </div>
@@ -1735,279 +1791,196 @@ function renderFCStudyTab(due){
     <div class="fc-setup-opts">
       <div class="fc-opt ${FC.mode==='due'?'selected':''}" onclick="selectFCMode('due')">Due Today (${due.length})</div>
       <div class="fc-opt ${FC.mode==='all'?'selected':''}" onclick="selectFCMode('all')">All Cards (${FC.cards.length})</div>
-      ${COURSES.map(c => {
-        const n = getCardsByCourse(c.id).length;
-        return n > 0 ? `<div class="fc-opt ${FC.mode==='course'&&FC.selectedCourse===c.id?'selected':''}" onclick="selectFCMode('course','${c.id}')">${c.label} (${n})</div>` : '';
-      }).join('')}
+      ${COURSES.map(c=>{const n=getCardsByCourse(c.id).length;return n>0?`<div class="fc-opt ${FC.mode==='course'&&FC.selectedCourse===c.id?'selected':''}" onclick="selectFCMode('course','${c.id}')">${c.label} (${n})</div>`:''}).join('')}
     </div>
     <button class="btn-primary" style="max-width:200px;margin-top:4px" onclick="startFCSession()">Start Session →</button>`;
 }
 
 function renderFCGenerateTab(){
-  const allPdfs = Object.values(S.pdfs).flat();
-  if(allPdfs.length === 0) return `
+  const allPdfs=Object.values(S.pdfs).flat();
+  if(allPdfs.length===0)return`
     <div class="ph-wrap" style="min-height:200px">
       <div class="ph-icon"><i class="ti ti-file-text"></i></div>
       <div class="ph-title">No PDFs uploaded yet</div>
       <div class="ph-sub">Upload PDFs in the PDF Library first, then come back to generate cards.</div>
       <button class="btn-sm" style="margin-top:14px" onclick="switchView('pdfs')">Go to PDF Library →</button>
     </div>`;
-
-  return `
+  return`
     <div style="font-size:13px;color:var(--text2);margin-bottom:14px">Select a PDF to generate flashcards from:</div>
     <div class="gen-pdf-list">
-      ${COURSES.map(course => {
-        const pdfs = S.pdfs[course.id] || [];
-        if(pdfs.length === 0) return '';
-        return pdfs.map(pdf => `
-          <div class="gen-pdf-row ${FC.selectedPdf && FC.selectedPdf.id === pdf.id ? 'selected' : ''}"
-               onclick="selectGenPdf(${JSON.stringify(pdf).replace(/"/g,'&quot;')})">
+      ${COURSES.map(course=>{
+        const pdfs=S.pdfs[course.id]||[];
+        if(pdfs.length===0)return'';
+        return pdfs.map(pdf=>`
+          <div class="gen-pdf-row ${FC.selectedPdf&&FC.selectedPdf.id===pdf.id?'selected':''}"
+               onclick='selectGenPdf(${JSON.stringify(pdf)})'>
             <i class="ti ti-file-type-pdf gen-pdf-icon"></i>
             <div class="gen-pdf-info">
               <div class="gen-pdf-name">${pdf.name}</div>
-              <div class="gen-pdf-meta">${course.label} · ${pdf.topics ? pdf.topics.name : ''} · ${pdf.size_label||''}</div>
+              <div class="gen-pdf-meta">${course.label} · ${pdf.topics?pdf.topics.name:''} · ${pdf.size_label||''}</div>
             </div>
             <i class="ti ti-circle-check gen-pdf-check"></i>
           </div>`).join('');
       }).join('')}
     </div>
-    ${FC.selectedPdf ? `
-      <button class="btn-primary" style="max-width:220px" onclick="startGeneration()">
-        <i class="ti ti-sparkles" style="font-size:13px;margin-right:5px"></i>Generate Cards
-      </button>` : ''}`;
+    ${FC.selectedPdf?`<button class="btn-primary" style="max-width:220px" onclick="startGeneration()"><i class="ti ti-sparkles" style="font-size:13px;margin-right:5px"></i>Generate Cards</button>`:''}`;
 }
 
-function selectGenPdf(pdf){
-  FC.selectedPdf = pdf;
-  renderFCSetup(document.getElementById('fc-container'));
-}
+function selectGenPdf(pdf){FC.selectedPdf=pdf;renderFCSetup(document.getElementById('fc-container'));}
 
-// ===== GENERATION =====
 async function startGeneration(){
-  if(!FC.selectedPdf){ toast('Select a PDF first','err'); return; }
-  FC.view = 'generate';
-  FC.generating = true;
+  if(!FC.selectedPdf){toast('Select a PDF first','err');return;}
+  FC.view='generate';
   renderFCGenerate(document.getElementById('fc-container'));
-
-  try {
-    // Fetch PDF from Supabase storage as blob, convert to base64
-    const { data: urlData } = sb.storage.from('pdfs').getPublicUrl(FC.selectedPdf.file_path);
-    const pdfResp = await fetch(urlData.publicUrl);
-    const pdfBlob = await pdfResp.blob();
-    const pdfBase64 = await new Promise(res => {
-      const r = new FileReader();
-      r.onload = () => res(r.result.split(',')[1]);
+  try{
+    const{data:urlData}=sb.storage.from('pdfs').getPublicUrl(FC.selectedPdf.file_path);
+    const pdfResp=await fetch(urlData.publicUrl);
+    if(!pdfResp.ok)throw new Error('Could not fetch PDF from storage');
+    const pdfBlob=await pdfResp.blob();
+    const pdfBase64=await new Promise(res=>{
+      const r=new FileReader();
+      r.onload=()=>res(r.result.split(',')[1]);
       r.readAsDataURL(pdfBlob);
     });
-
-    const course = COURSES.find(c => c.id === FC.selectedPdf.course_id);
-    const systemPrompt = `You are an expert Nigerian Law School Bar Finals flashcard generator.
-Your job is to read a Bar Part II study PDF and generate high-quality flashcards for exam preparation.
-
-CRITICAL: Your entire response must be a single valid JSON object. No markdown. No backticks. No explanation before or after. Start your response with { and end with }.
-
+    const course=COURSES.find(c=>c.id===FC.selectedPdf.course_id);
+    const systemPrompt=`You are an expert Nigerian Law School Bar Finals flashcard generator.
+Your entire response must be a single valid JSON object. No markdown. No backticks. No text before or after. Start with { and end with }.
 Rules:
-- Generate between 10 and 30 cards depending on content density
-- Cards must be exam-focused: definitions, sections, case names, procedures, distinctions, requirements
-- Front: a clear, specific question or prompt
-- Back: a precise, concise answer (1-3 sentences max — keep backs short to avoid truncation)
-- Prioritize: statutory provisions (CAMA, CPR, CPC, etc.), case law principles, procedural steps, time limits
-- Do NOT generate trivial or obvious cards
-
-Required JSON format (respond with this exact structure, nothing else):
-{"count":5,"cards":[{"front":"Question here","back":"Answer here"},{"front":"Question 2","back":"Answer 2"}]}`;
-
-    // Use Cloudflare Worker proxy (Gemini free API)
-    const PROXY_URL = 'https://barprep-proxy.0xxronin.workers.dev';
-    const prompt = `Generate flashcards from this ${course ? course.name : ''} PDF for Nigerian Law School Bar Finals preparation. The topic is: ${FC.selectedPdf.topics ? FC.selectedPdf.topics.name : FC.selectedPdf.name}.`;
-    const resp = await fetch(PROXY_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ pdfBase64, prompt, systemPrompt })
+- Generate 10 to 30 cards based on content density
+- Cards must be exam-focused: definitions, sections, case names, procedures, time limits
+- Front: clear specific question. Back: precise answer 1-3 sentences max
+- Prioritize: statutory provisions, case law principles, procedural steps
+Required format: {"count":5,"cards":[{"front":"Q","back":"A"}]}`;
+    const prompt=`Generate flashcards from this ${course?course.name:''} PDF for Nigerian Law School Bar Finals. Topic: ${FC.selectedPdf.topics?FC.selectedPdf.topics.name:FC.selectedPdf.name}.`;
+    const PROXY_URL='https://barprep-proxy.0xxronin.workers.dev';
+    const resp=await fetch(PROXY_URL,{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({pdfBase64,prompt,systemPrompt})
     });
-
-    const result = await resp.json();
-    const raw = result.text || '';
-    if(!raw){ toast('Empty response from AI — try again','err'); FC.view='setup'; renderFlashcards(); return; }
-
-    // Robust JSON extraction — handles markdown fences, leading text, truncation
-    let cards = [];
-    try {
-      // Strip markdown fences
-      let clean = raw.replace(/```json\s*/gi, '').replace(/```\s*/g, '').trim();
-      // Extract first JSON object if there's leading text
-      const jsonMatch = clean.match(/\{[\s\S]*\}/);
-      if(jsonMatch) clean = jsonMatch[0];
-      // If JSON is truncated, try to close it
-      const openBrackets = (clean.match(/\[/g)||[]).length - (clean.match(/\]/g)||[]).length;
-      const openBraces = (clean.match(/\{/g)||[]).length - (clean.match(/\}/g)||[]).length;
-      if(openBrackets > 0) clean += ']'.repeat(openBrackets);
-      if(openBraces > 0) clean += '}'.repeat(openBraces);
-      const parsed = JSON.parse(clean);
-      cards = parsed.cards || [];
-    } catch(parseErr) {
-      console.error('Parse error. Raw response:', raw);
-      toast('Could not parse AI response — try again or use a smaller PDF','err');
-      FC.view='setup'; renderFlashcards(); return;
+    if(!resp.ok){
+      const errText=await resp.text();
+      throw new Error('Worker error '+resp.status+': '+errText);
     }
-
-    if(cards.length === 0){ toast('No cards generated — try another PDF','err'); FC.view='setup'; renderFlashcards(); return; }
-
-    FC.reviewQueue = cards.map(c => ({
-      front: c.front,
-      back: c.back,
-      course_id: FC.selectedPdf.course_id,
-      topic_label: FC.selectedPdf.topics ? FC.selectedPdf.topics.name : '',
-      status: 'approved', // default approved, user can reject
-      editing: false,
+    const result=await resp.json();
+    if(result.error)throw new Error(result.error);
+    const raw=result.text||'';
+    if(!raw)throw new Error('Empty response from AI');
+    console.log('Gemini raw response:', raw);
+    let cards=[];
+    try{
+      let clean=raw.replace(/```json\s*/gi,'').replace(/```\s*/g,'').trim();
+      const jsonMatch=clean.match(/\{[\s\S]*\}/);
+      if(jsonMatch)clean=jsonMatch[0];
+      const openB=(clean.match(/\[/g)||[]).length-(clean.match(/\]/g)||[]).length;
+      const openC=(clean.match(/\{/g)||[]).length-(clean.match(/\}/g)||[]).length;
+      if(openB>0)clean+=']'.repeat(openB);
+      if(openC>0)clean+='}'.repeat(openC);
+      const parsed=JSON.parse(clean);
+      cards=parsed.cards||[];
+    }catch(parseErr){
+      console.error('Parse error. Raw:', raw);
+      throw new Error('AI response could not be parsed. Check console for details.');
+    }
+    if(cards.length===0)throw new Error('No cards in response — try a different PDF');
+    FC.reviewQueue=cards.map(c=>({
+      front:c.front,back:c.back,
+      course_id:FC.selectedPdf.course_id,
+      topic_label:FC.selectedPdf.topics?FC.selectedPdf.topics.name:'',
+      status:'approved',editing:false,
     }));
-    FC.generating = false;
-    FC.view = 'review';
+    FC.view='review';
     renderFlashcards();
-
-  } catch(err) {
-    FC.generating = false;
-    FC.view = 'setup';
-    toast('Generation failed: ' + err.message, 'err');
+  }catch(err){
+    console.error('Generation error:',err);
+    FC.view='setup';
+    toast('Generation failed: '+err.message,'err');
     renderFlashcards();
   }
 }
 
 function renderFCGenerate(el){
-  el.innerHTML = `
-    <div class="generating-anim">
-      <div class="spinner"></div>
-      <div>
-        <div style="color:var(--text2);margin-bottom:3px">Reading PDF and generating flashcards…</div>
-        <div style="font-size:11px;color:var(--text3)">${FC.selectedPdf ? FC.selectedPdf.name : ''}</div>
-      </div>
-    </div>`;
+  el.innerHTML=`<div class="generating-anim"><div class="spinner"></div><div><div style="color:var(--text2);margin-bottom:3px">Reading PDF and generating flashcards…</div><div style="font-size:11px;color:var(--text3)">${FC.selectedPdf?FC.selectedPdf.name:''}</div></div></div>`;
 }
 
-// ===== REVIEW =====
 function renderFCReview(el){
-  const approved = FC.reviewQueue.filter(c => c.status === 'approved').length;
-  const rejected = FC.reviewQueue.filter(c => c.status === 'rejected').length;
-  const total = FC.reviewQueue.length;
-
-  el.innerHTML = `
+  const approved=FC.reviewQueue.filter(c=>c.status==='approved').length;
+  const rejected=FC.reviewQueue.filter(c=>c.status==='rejected').length;
+  el.innerHTML=`
     <div style="display:flex;align-items:center;gap:10px;margin-bottom:18px;flex-wrap:wrap">
-      <button class="btn-cancel" onclick="FC.view='setup';FC.activeTab='generate';renderFlashcards()">
-        <i class="ti ti-arrow-left" style="font-size:13px"></i> Back
-      </button>
-      <div style="flex:1">
-        <div style="font-size:15px;font-weight:600">Review Generated Cards</div>
-        <div style="font-size:11px;color:var(--text3);margin-top:2px">${FC.selectedPdf ? FC.selectedPdf.name : ''}</div>
-      </div>
+      <button class="btn-cancel" onclick="FC.view='setup';FC.activeTab='generate';renderFlashcards()"><i class="ti ti-arrow-left" style="font-size:13px"></i> Back</button>
+      <div style="flex:1"><div style="font-size:15px;font-weight:600">Review Generated Cards</div><div style="font-size:11px;color:var(--text3);margin-top:2px">${FC.selectedPdf?FC.selectedPdf.name:''}</div></div>
     </div>
     <div class="review-toolbar">
-      <div class="review-toolbar-left">
-        <span>${approved}</span> approved · <span style="color:var(--danger)">${rejected}</span> rejected · ${total} total
-      </div>
+      <div class="review-toolbar-left"><span>${approved}</span> approved · <span style="color:var(--danger)">${rejected}</span> rejected</div>
       <div class="review-toolbar-right">
         <button class="btn-cancel" onclick="approveAll()">Approve All</button>
-        <button class="btn-sm" id="btn-save-cards" onclick="saveApprovedCards()">
-          Save ${approved} Cards →
-        </button>
+        <button class="btn-sm" onclick="saveApprovedCards()">Save ${approved} Cards →</button>
       </div>
     </div>
-    <div class="review-queue" id="review-queue-list">
-      ${FC.reviewQueue.map((c, i) => renderReviewCard(c, i)).join('')}
-    </div>
-    <div style="text-align:center;margin-top:6px">
-      <button class="btn-sm" id="btn-save-cards-bottom" onclick="saveApprovedCards()">Save ${approved} Approved Cards →</button>
-    </div>`;
+    <div class="review-queue">${FC.reviewQueue.map((c,i)=>renderReviewCard(c,i)).join('')}</div>
+    <div style="text-align:center;margin-top:6px"><button class="btn-sm" onclick="saveApprovedCards()">Save ${approved} Approved Cards →</button></div>`;
 }
 
-function renderReviewCard(c, i){
-  return `<div class="review-card ${c.status}" id="rc-${i}">
+function renderReviewCard(c,i){
+  return`<div class="review-card ${c.status}" id="rc-${i}">
     <div class="review-card-header">
       <span class="review-card-num">${i+1}</span>
-      <span class="review-card-front">${c.editing ? `<input style="background:var(--bg3);border:1px solid var(--border2);border-radius:6px;padding:4px 8px;color:var(--text);font-family:'Syne',sans-serif;font-size:13px;outline:none;width:100%" value="${c.front.replace(/"/g,'&quot;')}" onchange="FC.reviewQueue[${i}].front=this.value" onfocus="FC.reviewQueue[${i}].editing=true">` : c.front}</span>
+      <span class="review-card-front">${c.front}</span>
       <div class="review-card-actions">
         <div class="review-btn approve ${c.status==='approved'?'active':''}" onclick="setCardStatus(${i},'approved')" title="Approve"><i class="ti ti-check"></i></div>
-        <div class="review-btn edit-btn" onclick="toggleCardEdit(${i})" title="Edit"><i class="ti ti-pencil"></i></div>
         <div class="review-btn reject ${c.status==='rejected'?'active':''}" onclick="setCardStatus(${i},'rejected')" title="Reject"><i class="ti ti-x"></i></div>
       </div>
     </div>
-    <div class="review-card-body">
-      <div class="review-card-back">${c.editing ? `<textarea onchange="FC.reviewQueue[${i}].back=this.value">${c.back}</textarea>` : c.back}</div>
-    </div>
+    <div class="review-card-body"><div class="review-card-back">${c.back}</div></div>
   </div>`;
 }
 
-function setCardStatus(i, status){
-  FC.reviewQueue[i].status = status;
-  renderFCReview(document.getElementById('fc-container'));
-}
-
-function toggleCardEdit(i){
-  FC.reviewQueue[i].editing = !FC.reviewQueue[i].editing;
-  renderFCReview(document.getElementById('fc-container'));
-}
-
-function approveAll(){
-  FC.reviewQueue.forEach(c => { if(c.status !== 'rejected') c.status = 'approved'; });
-  renderFCReview(document.getElementById('fc-container'));
-}
+function setCardStatus(i,status){FC.reviewQueue[i].status=status;renderFCReview(document.getElementById('fc-container'));}
+function approveAll(){FC.reviewQueue.forEach(c=>{if(c.status!=='rejected')c.status='approved';});renderFCReview(document.getElementById('fc-container'));}
 
 async function saveApprovedCards(){
-  const toSave = FC.reviewQueue.filter(c => c.status === 'approved');
-  if(toSave.length === 0){ toast('No approved cards to save','err'); return; }
-  const btn = document.getElementById('btn-save-cards');
-  if(btn){ btn.disabled = true; btn.innerHTML = '<span class="spinner"></span>'; }
-
-  const rows = toSave.map(c => ({
-    front: c.front, back: c.back,
-    course_id: c.course_id, topic_label: c.topic_label,
-    review_count: 0
-  }));
-
-  const { data, error } = await sb.from('flashcards').insert(rows).select();
-  if(error){ toast('Save failed: '+error.message,'err'); if(btn){btn.disabled=false;btn.textContent='Save Cards →';} return; }
+  const toSave=FC.reviewQueue.filter(c=>c.status==='approved');
+  if(toSave.length===0){toast('No approved cards to save','err');return;}
+  const rows=toSave.map(c=>({front:c.front,back:c.back,course_id:c.course_id,topic_label:c.topic_label,review_count:0}));
+  const{data,error}=await sb.from('flashcards').insert(rows).select();
+  if(error){toast('Save failed: '+error.message,'err');return;}
   FC.cards.push(...(data||[]));
-  toast(toSave.length + ' cards saved to your deck ✓','ok');
-  FC.reviewQueue = [];
-  FC.view = 'setup';
-  FC.activeTab = 'study';
+  toast(toSave.length+' cards saved ✓','ok');
+  FC.reviewQueue=[];FC.view='setup';FC.activeTab='study';
   renderFlashcards();
 }
 
-// ===== STUDY SESSION =====
-function selectFCMode(mode, courseId){
-  FC.mode = mode; FC.selectedCourse = courseId || null;
-  renderFCSetup(document.getElementById('fc-container'));
-}
+function selectFCMode(mode,courseId){FC.mode=mode;FC.selectedCourse=courseId||null;renderFCSetup(document.getElementById('fc-container'));}
 
 function startFCSession(){
   let cards;
-  if(FC.mode === 'due') cards = getDueCards();
-  else if(FC.mode === 'all') cards = [...FC.cards];
-  else cards = getCardsByCourse(FC.selectedCourse);
-  if(cards.length === 0){ toast('No cards in this selection','err'); return; }
-  FC.queue = cards.sort(() => Math.random() - 0.5);
-  FC.current = 0; FC.flipped = false;
-  FC.sessionStats = { again: 0, hard: 0, easy: 0 };
-  FC.view = 'study';
-  renderFlashcards();
+  if(FC.mode==='due')cards=getDueCards();
+  else if(FC.mode==='all')cards=[...FC.cards];
+  else cards=getCardsByCourse(FC.selectedCourse);
+  if(cards.length===0){toast('No cards in this selection','err');return;}
+  FC.queue=cards.sort(()=>Math.random()-0.5);
+  FC.current=0;FC.flipped=false;
+  FC.sessionStats={again:0,hard:0,easy:0};
+  FC.view='study';renderFlashcards();
 }
 
 function renderFCStudy(el){
-  const card = FC.queue[FC.current];
-  const course = COURSES.find(c => c.id === card.course_id);
-  const pct = Math.round((FC.current / FC.queue.length) * 100);
-  el.innerHTML = `
+  const card=FC.queue[FC.current];
+  const course=COURSES.find(c=>c.id===card.course_id);
+  const pct=Math.round((FC.current/FC.queue.length)*100);
+  el.innerHTML=`
     <div class="fc-wrap">
       <div class="fc-progress-bar"><div class="fc-progress-fill" style="width:${pct}%"></div></div>
       <div class="fc-meta">
-        <div class="fc-meta-left">Card <span>${FC.current + 1}</span> of <span>${FC.queue.length}</span></div>
+        <div class="fc-meta-left">Card <span>${FC.current+1}</span> of <span>${FC.queue.length}</span></div>
         <div class="fc-meta-right">
           <div class="fc-chip new">Again: ${FC.sessionStats.again}</div>
           <div class="fc-chip due">Hard: ${FC.sessionStats.hard}</div>
           <div class="fc-chip done">Easy: ${FC.sessionStats.easy}</div>
         </div>
       </div>
-      <div class="fc-card ${FC.flipped?'flipped':''}" id="fc-card" onclick="flipCard()">
+      <div class="fc-card ${FC.flipped?'flipped':''}" onclick="flipCard()">
         <div class="fc-card-topic">${card.topic_label||''}</div>
         ${course?`<div class="fc-card-course" style="background:${course.bg};color:${course.color};border:1px solid ${course.border}">${course.label}</div>`:''}
         <div class="fc-card-front">${card.front}</div>
@@ -2020,39 +1993,31 @@ function renderFCStudy(el){
         <button class="fc-btn easy" onclick="rateCard('easy')">Easy<span>+4 days</span></button>
       </div>
       ${!FC.flipped?`<div style="text-align:center;margin-top:14px"><button class="btn-sm" onclick="flipCard()">Show Answer</button></div>`:''}
-      <div style="text-align:center;margin-top:12px">
-        <button class="btn-cancel" onclick="FC.view='setup';renderFlashcards()">End Session</button>
-      </div>
+      <div style="text-align:center;margin-top:12px"><button class="btn-cancel" onclick="FC.view='setup';renderFlashcards()">End Session</button></div>
     </div>`;
 }
 
-function flipCard(){
-  FC.flipped = true;
-  renderFCStudy(document.getElementById('fc-container'));
-}
+function flipCard(){FC.flipped=true;renderFCStudy(document.getElementById('fc-container'));}
 
 async function rateCard(rating){
-  const card = FC.queue[FC.current];
+  const card=FC.queue[FC.current];
   FC.sessionStats[rating]++;
-  const days = FC_INTERVALS[rating];
-  const nextReview = new Date();
-  if(days === 0) nextReview.setMinutes(nextReview.getMinutes() + 10);
-  else nextReview.setDate(nextReview.getDate() + days);
-  await sb.from('flashcards').update({
-    next_review: nextReview.toISOString(), last_rating: rating,
-    review_count: (card.review_count || 0) + 1
-  }).eq('id', card.id);
-  const idx = FC.cards.findIndex(c => c.id === card.id);
-  if(idx > -1){ FC.cards[idx].next_review = nextReview.toISOString(); FC.cards[idx].last_rating = rating; }
-  FC.current++; FC.flipped = false;
-  if(FC.current >= FC.queue.length){ FC.view = 'end'; renderFlashcards(); }
+  const days=FC_INTERVALS[rating];
+  const nextReview=new Date();
+  if(days===0)nextReview.setMinutes(nextReview.getMinutes()+10);
+  else nextReview.setDate(nextReview.getDate()+days);
+  await sb.from('flashcards').update({next_review:nextReview.toISOString(),last_rating:rating,review_count:(card.review_count||0)+1}).eq('id',card.id);
+  const idx=FC.cards.findIndex(c=>c.id===card.id);
+  if(idx>-1){FC.cards[idx].next_review=nextReview.toISOString();FC.cards[idx].last_rating=rating;}
+  FC.current++;FC.flipped=false;
+  if(FC.current>=FC.queue.length){FC.view='end';renderFlashcards();}
   else renderFCStudy(document.getElementById('fc-container'));
 }
 
 function renderFCEnd(el){
-  const total = FC.sessionStats.again + FC.sessionStats.hard + FC.sessionStats.easy;
-  const pct = total > 0 ? Math.round((FC.sessionStats.easy / total) * 100) : 0;
-  el.innerHTML = `
+  const total=FC.sessionStats.again+FC.sessionStats.hard+FC.sessionStats.easy;
+  const pct=total>0?Math.round((FC.sessionStats.easy/total)*100):0;
+  el.innerHTML=`
     <div class="fc-session-end">
       <div style="font-size:44px;margin-bottom:12px">🎉</div>
       <h3>Session Complete</h3>
@@ -2069,9 +2034,8 @@ function renderFCEnd(el){
     </div>`;
 }
 
-// ===== MANAGE =====
 function renderFCManage(el){
-  el.innerHTML = `
+  el.innerHTML=`
     <div style="display:flex;align-items:center;gap:10px;margin-bottom:18px">
       <button class="btn-cancel" onclick="FC.view='setup';renderFlashcards()"><i class="ti ti-arrow-left" style="font-size:13px"></i> Back</button>
       <div style="font-size:15px;font-weight:600">Manage Cards</div>
@@ -2094,12 +2058,12 @@ function renderFCManage(el){
 }
 
 function renderCardList(){
-  const el = document.getElementById('fc-card-list');
-  if(!el) return;
-  if(FC.cards.length === 0){ el.innerHTML = '<div class="empty-state">No cards yet.</div>'; return; }
-  el.innerHTML = FC.cards.slice().reverse().map(c => {
-    const course = COURSES.find(x => x.id === c.course_id);
-    return `<div class="file-row" style="padding-left:14px;flex-direction:column;align-items:flex-start;gap:4px">
+  const el=document.getElementById('fc-card-list');
+  if(!el)return;
+  if(FC.cards.length===0){el.innerHTML='<div class="empty-state">No cards yet.</div>';return;}
+  el.innerHTML=FC.cards.slice().reverse().map(c=>{
+    const course=COURSES.find(x=>x.id===c.course_id);
+    return`<div class="file-row" style="padding-left:14px;flex-direction:column;align-items:flex-start;gap:4px">
       <div style="display:flex;width:100%;align-items:center;gap:8px">
         ${course?`<span class="cc-tag" style="background:${course.bg};color:${course.color};border:1px solid ${course.border};font-size:9px">${course.label}</span>`:''}
         <span style="flex:1;font-size:12px;font-weight:500">${c.front}</span>
@@ -2111,115 +2075,28 @@ function renderCardList(){
 }
 
 async function addCard(){
-  const front = document.getElementById('fc-front').value.trim();
-  const back = document.getElementById('fc-back').value.trim();
-  const course_id = document.getElementById('fc-course-sel').value;
-  const topic_label = document.getElementById('fc-topic-inp').value.trim();
-  if(!front||!back){ toast('Front and back are required','err'); return; }
-  const btn = document.getElementById('fc-add-btn');
-  btn.disabled=true; btn.innerHTML='<span class="spinner"></span>';
+  const front=document.getElementById('fc-front').value.trim();
+  const back=document.getElementById('fc-back').value.trim();
+  const course_id=document.getElementById('fc-course-sel').value;
+  const topic_label=document.getElementById('fc-topic-inp').value.trim();
+  if(!front||!back){toast('Front and back are required','err');return;}
+  const btn=document.getElementById('fc-add-btn');
+  btn.disabled=true;btn.innerHTML='<span class="spinner"></span>';
   const{data,error}=await sb.from('flashcards').insert({front,back,course_id,topic_label,review_count:0}).select().single();
   if(error){toast('Error: '+error.message,'err');btn.disabled=false;btn.textContent='+ Add Card';return;}
   FC.cards.push(data);
   document.getElementById('fc-front').value='';
   document.getElementById('fc-back').value='';
-  btn.disabled=false; btn.textContent='+ Add Card';
-  toast('Card added','ok'); renderCardList();
+  btn.disabled=false;btn.textContent='+ Add Card';
+  toast('Card added','ok');renderCardList();
 }
 
 async function deleteCard(id){
-  if(!confirm('Delete this card?')) return;
+  if(!confirm('Delete this card?'))return;
   await sb.from('flashcards').delete().eq('id',id);
-  FC.cards = FC.cards.filter(c=>c.id!==id);
-  renderCardList(); toast('Card deleted','ok');
+  FC.cards=FC.cards.filter(c=>c.id!==id);
+  renderCardList();toast('Card deleted','ok');
 }
-
-
-// ===== TOPIC CRUD =====
-function toggleTopicMenu(menuId, btnEl){
-  document.querySelectorAll('.topic-dropdown.open').forEach(m => {
-    if(m.id !== menuId) m.classList.remove('open');
-  });
-  const menu = document.getElementById(menuId);
-  if(!menu) return;
-  const isOpen = menu.classList.contains('open');
-  if(isOpen){ menu.classList.remove('open'); return; }
-  // Position using fixed coords from the button
-  const btn = btnEl || menu.previousElementSibling;
-  if(btn){
-    const rect = btn.getBoundingClientRect();
-    menu.style.top = (rect.bottom + 4) + 'px';
-    menu.style.left = (rect.right - 130) + 'px';
-  }
-  menu.classList.add('open');
-}
-// close menus on outside click
-document.addEventListener('click', () => {
-  document.querySelectorAll('.topic-dropdown.open').forEach(m => m.classList.remove('open'));
-});
-
-function startRenameTopic(topicId, currentName, type){
-  document.querySelectorAll('.topic-dropdown.open').forEach(m => m.classList.remove('open'));
-  const nameEl = document.getElementById('tname-' + topicId);
-  if(!nameEl) return;
-  const input = document.createElement('input');
-  input.className = 'rename-input';
-  input.value = currentName;
-  input.onclick = e => e.stopPropagation();
-  input.onkeydown = async e => {
-    if(e.key === 'Enter') await confirmRenameTopic(topicId, input.value.trim(), type, nameEl);
-    if(e.key === 'Escape'){ nameEl.textContent = currentName; input.replaceWith(nameEl); }
-  };
-  input.onblur = async () => await confirmRenameTopic(topicId, input.value.trim(), type, nameEl);
-  nameEl.replaceWith(input);
-  input.focus(); input.select();
-}
-
-async function confirmRenameTopic(topicId, newName, type, nameEl){
-  if(!newName){ nameEl && (nameEl.textContent = newName); return; }
-  const { error } = await sb.from('topics').update({ name: newName }).eq('id', topicId);
-  if(error){ toast('Rename failed: ' + error.message, 'err'); return; }
-  // update local state
-  Object.keys(S.topics).forEach(courseId => {
-    const t = S.topics[courseId]?.find(t => t.id === topicId);
-    if(t) t.name = newName;
-  });
-  toast('Renamed to "' + newName + '"', 'ok');
-  if(type === 'pdf') renderPdfs(); else renderAudio();
-}
-
-async function deleteTopic(topicId, type){
-  const courseId = type === 'pdf' ? S.pdfCourse : S.audioCourse;
-  const topic = S.topics[courseId]?.find(t => t.id === topicId);
-  const name = topic?.name || 'this folder';
-  // check if topic has files
-  const hasFiles = type === 'pdf'
-    ? (S.pdfs[courseId] || []).some(f => f.topic_id === topicId)
-    : (S.audios[courseId] || []).some(f => f.topic_id === topicId);
-  const msg = hasFiles
-    ? `Delete "${name}" and all its files? This cannot be undone.`
-    : `Delete empty folder "${name}"?`;
-  if(!confirm(msg)) return;
-  // delete files from storage first if any
-  if(hasFiles){
-    const bucket = type === 'pdf' ? 'pdfs' : 'audio';
-    const table = type === 'pdf' ? 'pdfs' : 'audio_files';
-    const files = (type === 'pdf' ? S.pdfs[courseId] : S.audios[courseId]) || [];
-    const topicFiles = files.filter(f => f.topic_id === topicId);
-    const paths = topicFiles.map(f => f.file_path);
-    if(paths.length > 0) await sb.storage.from(bucket).remove(paths);
-    await sb.from(table).delete().eq('topic_id', topicId);
-    if(type === 'pdf') S.pdfs[courseId] = files.filter(f => f.topic_id !== topicId);
-    else S.audios[courseId] = files.filter(f => f.topic_id !== topicId);
-  }
-  // delete topic
-  await sb.from('topics').delete().eq('id', topicId);
-  S.topics[courseId] = (S.topics[courseId] || []).filter(t => t.id !== topicId);
-  updateBadges();
-  toast('Folder deleted', 'ok');
-  if(type === 'pdf') renderPdfs(); else renderAudio();
-}
-
 </script>
 </body>
 </html>
