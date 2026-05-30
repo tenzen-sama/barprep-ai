@@ -1442,21 +1442,31 @@ document.addEventListener('click',()=>{
 
 // ===== ADD TOPIC =====
 // Topics are shared — one topic covers both PDFs and audio for the same course
+let _addingTopic = false;
 async function addTopic(type){
+  if(_addingTopic) return;
   const inputId=type==='pdf'?'new-topic-name':'new-audio-topic-name';
   const btnId=type==='pdf'?'btn-add-topic':'btn-add-audio-topic';
   const courseId=type==='pdf'?S.pdfCourse:S.audioCourse;
-  const name=document.getElementById(inputId)?.value.trim();
+  const inputEl=document.getElementById(inputId);
+  const name=inputEl?.value.trim();
   if(!name){toast('Enter a topic name first','err');return;}
+  _addingTopic=true;
   const btn=document.getElementById(btnId);
-  btn.disabled=true;btn.innerHTML='<span class="spinner"></span>';
-  const{error}=await sb.from('topics').insert({course_id:courseId,name});
-  if(error){toast('Error: '+error.message,'err');btn.disabled=false;btn.textContent='+ Add Topic';return;}
-  document.getElementById(inputId).value='';
-  btn.disabled=false;btn.textContent='+ Add Topic';
-  await refreshData();
-  toast('"'+name+'" added','ok');
-  if(type==='pdf')renderPdfs();else renderAudio();
+  if(btn){btn.disabled=true;btn.innerHTML='<span class="spinner"></span>';}
+  try{
+    const{error}=await sb.from('topics').insert({course_id:courseId,name});
+    if(error)throw new Error(error.message);
+    if(inputEl)inputEl.value='';
+    await refreshData();
+    toast('"'+name+'" added','ok');
+  }catch(err){
+    toast('Error: '+err.message,'err');
+  }finally{
+    _addingTopic=false;
+    // Re-render will rebuild the button fresh — no need to reset manually
+    if(type==='pdf')renderPdfs();else renderAudio();
+  }
 }
 
 // ===== RENAME TOPIC =====
