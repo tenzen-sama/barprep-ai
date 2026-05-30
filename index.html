@@ -12,12 +12,12 @@
 let sidebarCollapsed = false;
 function toggleSidebar(){
   sidebarCollapsed = !sidebarCollapsed;
-  const sb = document.getElementById('sidebar');
+  const sidebarEl = document.getElementById('sidebar');
   const btn = document.getElementById('toggle-sidebar-btn');
   const icon = document.getElementById('toggle-sidebar-icon');
-  sb.classList.toggle('collapsed', sidebarCollapsed);
-  btn.classList.toggle('collapsed', sidebarCollapsed);
-  icon.className = sidebarCollapsed ? 'ti ti-chevron-right' : 'ti ti-chevron-left';
+  if(sidebarEl) sidebarEl.classList.toggle('collapsed', sidebarCollapsed);
+  if(btn) btn.classList.toggle('collapsed', sidebarCollapsed);
+  if(icon) icon.className = sidebarCollapsed ? 'ti ti-chevron-right' : 'ti ti-chevron-left';
   localStorage.setItem('bp-sidebar', sidebarCollapsed ? '1' : '0');
 }
 document.addEventListener('keydown', e => {
@@ -1171,10 +1171,10 @@ function toast(msg,type='ok'){
 
 // ===== MOBILE SIDEBAR =====
 function toggleMobileSidebar(){
-  const s=document.getElementById('sidebar');
-  const o=document.getElementById('mobile-overlay');
-  s.classList.toggle('mobile-open');
-  o.classList.toggle('open');
+  const sidebarEl=document.getElementById('sidebar');
+  const overlayEl=document.getElementById('mobile-overlay');
+  if(sidebarEl)sidebarEl.classList.toggle('mobile-open');
+  if(overlayEl)overlayEl.classList.toggle('open');
 }
 
 // ===== SIDEBAR COLLAPSE =====
