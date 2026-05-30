@@ -359,6 +359,65 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:'Syne',
 [data-theme="navy"] .toggle-sidebar-btn:hover{color:#c9a84c}
 @media(max-width:768px){.toggle-sidebar-btn{display:none}}
 
+
+/* ===== FLASHCARD GENERATE & REVIEW ===== */
+.fc-tabs{display:flex;gap:5px;margin-bottom:18px}
+.fc-tab{padding:6px 16px;border-radius:99px;font-size:12px;cursor:pointer;border:1px solid var(--border);color:var(--text2);background:transparent;transition:all 0.13s}
+.fc-tab:hover{border-color:var(--border2);color:var(--text)}
+.fc-tab.active{background:rgba(124,92,252,0.12);border-color:var(--border3);color:var(--neon2)}
+[data-theme="navy"] .fc-tab.active{background:rgba(201,168,76,0.1);border-color:rgba(201,168,76,0.3);color:#c9a84c}
+
+.gen-pdf-list{display:flex;flex-direction:column;gap:7px;margin-bottom:18px}
+.gen-pdf-row{display:flex;align-items:center;gap:10px;background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:12px 14px;cursor:pointer;transition:all 0.13s}
+.gen-pdf-row:hover{border-color:var(--border2);background:var(--bg3)}
+.gen-pdf-row.selected{border-color:var(--neon2);background:rgba(124,92,252,0.07)}
+[data-theme="navy"] .gen-pdf-row.selected{border-color:#c9a84c;background:rgba(201,168,76,0.07)}
+.gen-pdf-icon{font-size:18px;color:#f87171;flex-shrink:0}
+.gen-pdf-info{flex:1;min-width:0}
+.gen-pdf-name{font-size:13px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.gen-pdf-meta{font-size:11px;color:var(--text3);margin-top:2px}
+.gen-pdf-check{font-size:18px;color:var(--neon2);opacity:0}
+.gen-pdf-row.selected .gen-pdf-check{opacity:1}
+[data-theme="navy"] .gen-pdf-check{color:#c9a84c}
+
+.gen-status{background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:20px;text-align:center;margin-bottom:14px}
+.gen-status-icon{font-size:28px;margin-bottom:8px}
+.gen-status-text{font-size:13px;color:var(--text2)}
+.gen-status-sub{font-size:11px;color:var(--text3);margin-top:4px}
+
+.review-queue{display:flex;flex-direction:column;gap:8px;margin-bottom:16px}
+.review-card{background:var(--bg2);border:1px solid var(--border);border-radius:10px;overflow:hidden;transition:all 0.15s}
+.review-card.approved{border-color:rgba(16,185,129,0.4);background:rgba(16,185,129,0.04)}
+.review-card.rejected{opacity:0.4;border-color:var(--border)}
+.review-card-header{display:flex;align-items:center;gap:10px;padding:12px 14px;border-bottom:1px solid var(--border)}
+.review-card-num{font-size:10px;font-family:'Space Mono',monospace;color:var(--text3);min-width:24px}
+.review-card-front{flex:1;font-size:13px;font-weight:500}
+.review-card-actions{display:flex;gap:5px}
+.review-btn{width:28px;height:28px;border-radius:6px;border:1px solid;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:14px;transition:all 0.13s;background:transparent}
+.review-btn.approve{border-color:rgba(16,185,129,0.3);color:var(--green)}
+.review-btn.approve:hover,.review-btn.approve.active{background:rgba(16,185,129,0.15);border-color:rgba(16,185,129,0.5)}
+.review-btn.edit-btn{border-color:var(--border2);color:var(--text3)}
+.review-btn.edit-btn:hover{background:var(--bg3);color:var(--neon2)}
+.review-btn.reject{border-color:rgba(248,113,113,0.3);color:var(--danger)}
+.review-btn.reject:hover,.review-btn.reject.active{background:rgba(248,113,113,0.12);border-color:rgba(248,113,113,0.5)}
+.review-card-body{padding:10px 14px}
+.review-card-back{font-size:12px;color:var(--text2);line-height:1.6}
+.review-card-edit{display:none;padding:10px 14px;border-top:1px solid var(--border);flex-direction:column;gap:7px}
+.review-card-edit.open{display:flex}
+.review-card-edit textarea{background:var(--bg3);border:1px solid var(--border2);border-radius:7px;padding:8px 10px;color:var(--text);font-family:'Syne',sans-serif;font-size:12px;outline:none;resize:vertical;min-height:50px;width:100%}
+.review-card-edit textarea:focus{border-color:var(--neon)}
+.review-card-edit-label{font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:2px}
+
+.review-toolbar{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:8px}
+.review-toolbar-left{font-size:12px;color:var(--text3)}
+.review-toolbar-left span{color:var(--neon2);font-family:'Space Mono',monospace}
+[data-theme="navy"] .review-toolbar-left span{color:#c9a84c}
+.review-toolbar-right{display:flex;gap:6px}
+
+.generating-anim{display:flex;align-items:center;justify-content:center;gap:10px;padding:30px;color:var(--text3);font-size:13px}
+.generating-anim .spinner{width:18px;height:18px;border-width:2px;border-color:rgba(124,92,252,0.2);border-top-color:var(--neon2)}
+[data-theme="navy"] .generating-anim .spinner{border-top-color:#c9a84c}
+
 /* ===== FLASHCARD ENGINE ===== */
 .fc-wrap{max-width:680px;margin:0 auto}
 .fc-progress-bar{height:3px;background:var(--bg4);border-radius:99px;margin-bottom:20px;overflow:hidden}
@@ -1330,19 +1389,19 @@ document.addEventListener('keydown', e => {
   if(localStorage.getItem('bp-sidebar') === '1') toggleSidebar();
 })();
 
+
 // ===== FLASHCARD ENGINE =====
-// Simple SM-2-inspired SRS: Again=0, Hard=1, Easy=4 (days)
 const FC_INTERVALS = { again: 0, hard: 1, easy: 4 };
 
 let FC = {
-  cards: [],         // all cards from DB
-  queue: [],         // current session queue
-  current: 0,        // index in queue
-  flipped: false,
-  mode: 'due',       // 'due' | 'all' | 'course'
-  selectedCourse: null,
+  cards: [], queue: [], current: 0, flipped: false,
+  mode: 'due', selectedCourse: null,
   sessionStats: { again: 0, hard: 0, easy: 0 },
-  view: 'setup',     // 'setup' | 'study' | 'end' | 'manage'
+  view: 'setup',   // setup | study | end | manage | generate | review
+  activeTab: 'study', // study | generate
+  selectedPdf: null,
+  reviewQueue: [],  // [{front,back,course_id,topic_label,status:'pending'|'approved'|'rejected',editing:false}]
+  generating: false,
 };
 
 async function loadCards(){
@@ -1352,10 +1411,7 @@ async function loadCards(){
 
 function getDueCards(){
   const now = new Date();
-  return FC.cards.filter(c => {
-    if(!c.next_review) return true;
-    return new Date(c.next_review) <= now;
-  });
+  return FC.cards.filter(c => !c.next_review || new Date(c.next_review) <= now);
 }
 
 function getCardsByCourse(courseId){
@@ -1364,36 +1420,47 @@ function getCardsByCourse(courseId){
 
 async function renderFlashcards(){
   const el = document.getElementById('fc-container');
-  // ensure cards loaded
   if(FC.cards.length === 0 && S.user) await loadCards();
-
-  if(FC.view === 'setup') renderFCSetup(el);
-  else if(FC.view === 'study') renderFCStudy(el);
+  if(FC.view === 'study') renderFCStudy(el);
   else if(FC.view === 'end') renderFCEnd(el);
   else if(FC.view === 'manage') renderFCManage(el);
+  else if(FC.view === 'generate') renderFCGenerate(el);
+  else if(FC.view === 'review') renderFCReview(el);
+  else renderFCSetup(el);
 }
 
+// ===== SETUP =====
 function renderFCSetup(el){
   const due = getDueCards();
   el.innerHTML = `
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
-      <div>
-        <div style="font-size:16px;font-weight:600">Flashcards</div>
-        <div style="font-size:12px;color:var(--text3);margin-top:2px">${FC.cards.length} cards total · ${due.length} due today</div>
-      </div>
-      <div style="display:flex;gap:8px">
-        <button class="btn-sm" onclick="FC.view='manage';renderFlashcards()"><i class="ti ti-plus" style="font-size:13px"></i> Add Cards</button>
-      </div>
+    <div class="fc-tabs">
+      <div class="fc-tab ${FC.activeTab==='study'?'active':''}" onclick="setFCTab('study')">Study</div>
+      <div class="fc-tab ${FC.activeTab==='generate'?'active':''}" onclick="setFCTab('generate')">Generate from PDF</div>
+      <div class="fc-tab" onclick="FC.view='manage';renderFlashcards()">Manage Cards</div>
     </div>
-    ${FC.cards.length === 0 ? `
-      <div class="ph-wrap">
-        <div class="ph-icon"><i class="ti ti-cards"></i></div>
-        <div class="ph-title">No cards yet</div>
-        <div class="ph-sub">Add your first flashcard to get started with spaced repetition review.</div>
-        <button class="btn-sm" style="margin-top:16px" onclick="FC.view='manage';renderFlashcards()">+ Add Cards</button>
-      </div>` : `
+    ${FC.activeTab === 'generate' ? renderFCGenerateTab() : renderFCStudyTab(due)}`;
+}
+
+function setFCTab(tab){
+  FC.activeTab = tab;
+  renderFCSetup(document.getElementById('fc-container'));
+}
+
+function renderFCStudyTab(due){
+  if(FC.cards.length === 0) return `
+    <div class="ph-wrap">
+      <div class="ph-icon"><i class="ti ti-cards"></i></div>
+      <div class="ph-title">No cards yet</div>
+      <div class="ph-sub">Use "Generate from PDF" to create cards from your uploaded materials.</div>
+      <button class="btn-sm" style="margin-top:16px" onclick="setFCTab('generate')">Generate Cards →</button>
+    </div>`;
+
+  return `
+    <div style="margin-bottom:14px">
+      <div style="font-size:13px;color:var(--text2)">${FC.cards.length} cards total · <span style="color:var(--neon2);font-family:'Space Mono',monospace">${due.length} due today</span></div>
+    </div>
     <div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:0.1em;margin-bottom:10px">Study Mode</div>
-    <div class="fc-setup-opts" id="fc-mode-opts">
+    <div class="fc-setup-opts">
       <div class="fc-opt ${FC.mode==='due'?'selected':''}" onclick="selectFCMode('due')">Due Today (${due.length})</div>
       <div class="fc-opt ${FC.mode==='all'?'selected':''}" onclick="selectFCMode('all')">All Cards (${FC.cards.length})</div>
       ${COURSES.map(c => {
@@ -1401,13 +1468,242 @@ function renderFCSetup(el){
         return n > 0 ? `<div class="fc-opt ${FC.mode==='course'&&FC.selectedCourse===c.id?'selected':''}" onclick="selectFCMode('course','${c.id}')">${c.label} (${n})</div>` : '';
       }).join('')}
     </div>
-    <button class="btn-primary" style="max-width:200px" onclick="startFCSession()">Start Session →</button>`}
-  `;
+    <button class="btn-primary" style="max-width:200px;margin-top:4px" onclick="startFCSession()">Start Session →</button>`;
 }
 
+function renderFCGenerateTab(){
+  const allPdfs = Object.values(S.pdfs).flat();
+  if(allPdfs.length === 0) return `
+    <div class="ph-wrap" style="min-height:200px">
+      <div class="ph-icon"><i class="ti ti-file-text"></i></div>
+      <div class="ph-title">No PDFs uploaded yet</div>
+      <div class="ph-sub">Upload PDFs in the PDF Library first, then come back to generate cards.</div>
+      <button class="btn-sm" style="margin-top:14px" onclick="switchView('pdfs')">Go to PDF Library →</button>
+    </div>`;
+
+  return `
+    <div style="font-size:13px;color:var(--text2);margin-bottom:14px">Select a PDF to generate flashcards from:</div>
+    <div class="gen-pdf-list">
+      ${COURSES.map(course => {
+        const pdfs = S.pdfs[course.id] || [];
+        if(pdfs.length === 0) return '';
+        return pdfs.map(pdf => `
+          <div class="gen-pdf-row ${FC.selectedPdf && FC.selectedPdf.id === pdf.id ? 'selected' : ''}"
+               onclick="selectGenPdf(${JSON.stringify(pdf).replace(/"/g,'&quot;')})">
+            <i class="ti ti-file-type-pdf gen-pdf-icon"></i>
+            <div class="gen-pdf-info">
+              <div class="gen-pdf-name">${pdf.name}</div>
+              <div class="gen-pdf-meta">${course.label} · ${pdf.topics ? pdf.topics.name : ''} · ${pdf.size_label||''}</div>
+            </div>
+            <i class="ti ti-circle-check gen-pdf-check"></i>
+          </div>`).join('');
+      }).join('')}
+    </div>
+    ${FC.selectedPdf ? `
+      <button class="btn-primary" style="max-width:220px" onclick="startGeneration()">
+        <i class="ti ti-sparkles" style="font-size:13px;margin-right:5px"></i>Generate Cards
+      </button>` : ''}`;
+}
+
+function selectGenPdf(pdf){
+  FC.selectedPdf = pdf;
+  renderFCSetup(document.getElementById('fc-container'));
+}
+
+// ===== GENERATION =====
+async function startGeneration(){
+  if(!FC.selectedPdf){ toast('Select a PDF first','err'); return; }
+  FC.view = 'generate';
+  FC.generating = true;
+  renderFCGenerate(document.getElementById('fc-container'));
+
+  try {
+    // Fetch PDF from Supabase storage as blob, convert to base64
+    const { data: urlData } = sb.storage.from('pdfs').getPublicUrl(FC.selectedPdf.file_path);
+    const pdfResp = await fetch(urlData.publicUrl);
+    const pdfBlob = await pdfResp.blob();
+    const pdfBase64 = await new Promise(res => {
+      const r = new FileReader();
+      r.onload = () => res(r.result.split(',')[1]);
+      r.readAsDataURL(pdfBlob);
+    });
+
+    const course = COURSES.find(c => c.id === FC.selectedPdf.course_id);
+    const systemPrompt = `You are an expert Nigerian Law School Bar Finals flashcard generator. 
+Your job is to read a Bar Part II study PDF and generate high-quality flashcards for exam preparation.
+
+Rules:
+- Generate between 10 and 50 cards depending on content density (more content = more cards)
+- Cards must be exam-focused: definitions, sections, case names, procedures, distinctions, requirements
+- Front: a clear, specific question or prompt
+- Back: a precise, concise answer (2-5 sentences max)
+- Prioritize: statutory provisions (CAMA, CPR, CPC, etc.), case law principles, procedural steps, time limits, forms
+- Do NOT generate trivial or obvious cards
+- Respond ONLY with valid JSON, no markdown, no preamble
+
+JSON format:
+{
+  "count": <number>,
+  "cards": [
+    {"front": "...", "back": "..."},
+    ...
+  ]
+}`;
+
+    const resp = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 4000,
+        system: systemPrompt,
+        messages: [{
+          role: 'user',
+          content: [
+            {
+              type: 'document',
+              source: { type: 'base64', media_type: 'application/pdf', data: pdfBase64 }
+            },
+            {
+              type: 'text',
+              text: `Generate flashcards from this ${course ? course.name : ''} PDF for Nigerian Law School Bar Finals preparation. The topic is: ${FC.selectedPdf.topics ? FC.selectedPdf.topics.name : FC.selectedPdf.name}.`
+            }
+          ]
+        }]
+      })
+    });
+
+    const result = await resp.json();
+    const raw = result.content?.[0]?.text || '';
+    const clean = raw.replace(/```json|```/g, '').trim();
+    const parsed = JSON.parse(clean);
+    const cards = parsed.cards || [];
+
+    if(cards.length === 0){ toast('No cards generated — try another PDF','err'); FC.view='setup'; renderFlashcards(); return; }
+
+    FC.reviewQueue = cards.map(c => ({
+      front: c.front,
+      back: c.back,
+      course_id: FC.selectedPdf.course_id,
+      topic_label: FC.selectedPdf.topics ? FC.selectedPdf.topics.name : '',
+      status: 'approved', // default approved, user can reject
+      editing: false,
+    }));
+    FC.generating = false;
+    FC.view = 'review';
+    renderFlashcards();
+
+  } catch(err) {
+    FC.generating = false;
+    FC.view = 'setup';
+    toast('Generation failed: ' + err.message, 'err');
+    renderFlashcards();
+  }
+}
+
+function renderFCGenerate(el){
+  el.innerHTML = `
+    <div class="generating-anim">
+      <div class="spinner"></div>
+      <div>
+        <div style="color:var(--text2);margin-bottom:3px">Reading PDF and generating flashcards…</div>
+        <div style="font-size:11px;color:var(--text3)">${FC.selectedPdf ? FC.selectedPdf.name : ''}</div>
+      </div>
+    </div>`;
+}
+
+// ===== REVIEW =====
+function renderFCReview(el){
+  const approved = FC.reviewQueue.filter(c => c.status === 'approved').length;
+  const rejected = FC.reviewQueue.filter(c => c.status === 'rejected').length;
+  const total = FC.reviewQueue.length;
+
+  el.innerHTML = `
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:18px;flex-wrap:wrap">
+      <button class="btn-cancel" onclick="FC.view='setup';FC.activeTab='generate';renderFlashcards()">
+        <i class="ti ti-arrow-left" style="font-size:13px"></i> Back
+      </button>
+      <div style="flex:1">
+        <div style="font-size:15px;font-weight:600">Review Generated Cards</div>
+        <div style="font-size:11px;color:var(--text3);margin-top:2px">${FC.selectedPdf ? FC.selectedPdf.name : ''}</div>
+      </div>
+    </div>
+    <div class="review-toolbar">
+      <div class="review-toolbar-left">
+        <span>${approved}</span> approved · <span style="color:var(--danger)">${rejected}</span> rejected · ${total} total
+      </div>
+      <div class="review-toolbar-right">
+        <button class="btn-cancel" onclick="approveAll()">Approve All</button>
+        <button class="btn-sm" id="btn-save-cards" onclick="saveApprovedCards()">
+          Save ${approved} Cards →
+        </button>
+      </div>
+    </div>
+    <div class="review-queue" id="review-queue-list">
+      ${FC.reviewQueue.map((c, i) => renderReviewCard(c, i)).join('')}
+    </div>
+    <div style="text-align:center;margin-top:6px">
+      <button class="btn-sm" id="btn-save-cards-bottom" onclick="saveApprovedCards()">Save ${approved} Approved Cards →</button>
+    </div>`;
+}
+
+function renderReviewCard(c, i){
+  return `<div class="review-card ${c.status}" id="rc-${i}">
+    <div class="review-card-header">
+      <span class="review-card-num">${i+1}</span>
+      <span class="review-card-front">${c.editing ? `<input style="background:var(--bg3);border:1px solid var(--border2);border-radius:6px;padding:4px 8px;color:var(--text);font-family:'Syne',sans-serif;font-size:13px;outline:none;width:100%" value="${c.front.replace(/"/g,'&quot;')}" onchange="FC.reviewQueue[${i}].front=this.value" onfocus="FC.reviewQueue[${i}].editing=true">` : c.front}</span>
+      <div class="review-card-actions">
+        <div class="review-btn approve ${c.status==='approved'?'active':''}" onclick="setCardStatus(${i},'approved')" title="Approve"><i class="ti ti-check"></i></div>
+        <div class="review-btn edit-btn" onclick="toggleCardEdit(${i})" title="Edit"><i class="ti ti-pencil"></i></div>
+        <div class="review-btn reject ${c.status==='rejected'?'active':''}" onclick="setCardStatus(${i},'rejected')" title="Reject"><i class="ti ti-x"></i></div>
+      </div>
+    </div>
+    <div class="review-card-body">
+      <div class="review-card-back">${c.editing ? `<textarea onchange="FC.reviewQueue[${i}].back=this.value">${c.back}</textarea>` : c.back}</div>
+    </div>
+  </div>`;
+}
+
+function setCardStatus(i, status){
+  FC.reviewQueue[i].status = status;
+  renderFCReview(document.getElementById('fc-container'));
+}
+
+function toggleCardEdit(i){
+  FC.reviewQueue[i].editing = !FC.reviewQueue[i].editing;
+  renderFCReview(document.getElementById('fc-container'));
+}
+
+function approveAll(){
+  FC.reviewQueue.forEach(c => { if(c.status !== 'rejected') c.status = 'approved'; });
+  renderFCReview(document.getElementById('fc-container'));
+}
+
+async function saveApprovedCards(){
+  const toSave = FC.reviewQueue.filter(c => c.status === 'approved');
+  if(toSave.length === 0){ toast('No approved cards to save','err'); return; }
+  const btn = document.getElementById('btn-save-cards');
+  if(btn){ btn.disabled = true; btn.innerHTML = '<span class="spinner"></span>'; }
+
+  const rows = toSave.map(c => ({
+    front: c.front, back: c.back,
+    course_id: c.course_id, topic_label: c.topic_label,
+    review_count: 0
+  }));
+
+  const { data, error } = await sb.from('flashcards').insert(rows).select();
+  if(error){ toast('Save failed: '+error.message,'err'); if(btn){btn.disabled=false;btn.textContent='Save Cards →';} return; }
+  FC.cards.push(...(data||[]));
+  toast(toSave.length + ' cards saved to your deck ✓','ok');
+  FC.reviewQueue = [];
+  FC.view = 'setup';
+  FC.activeTab = 'study';
+  renderFlashcards();
+}
+
+// ===== STUDY SESSION =====
 function selectFCMode(mode, courseId){
-  FC.mode = mode;
-  FC.selectedCourse = courseId || null;
+  FC.mode = mode; FC.selectedCourse = courseId || null;
   renderFCSetup(document.getElementById('fc-container'));
 }
 
@@ -1416,12 +1712,9 @@ function startFCSession(){
   if(FC.mode === 'due') cards = getDueCards();
   else if(FC.mode === 'all') cards = [...FC.cards];
   else cards = getCardsByCourse(FC.selectedCourse);
-
   if(cards.length === 0){ toast('No cards in this selection','err'); return; }
-  // shuffle
   FC.queue = cards.sort(() => Math.random() - 0.5);
-  FC.current = 0;
-  FC.flipped = false;
+  FC.current = 0; FC.flipped = false;
   FC.sessionStats = { again: 0, hard: 0, easy: 0 };
   FC.view = 'study';
   renderFlashcards();
@@ -1444,18 +1737,18 @@ function renderFCStudy(el){
       </div>
       <div class="fc-card ${FC.flipped?'flipped':''}" id="fc-card" onclick="flipCard()">
         <div class="fc-card-topic">${card.topic_label||''}</div>
-        ${course ? `<div class="fc-card-course" style="background:${course.bg};color:${course.color};border:1px solid ${course.border}">${course.label}</div>` : ''}
+        ${course?`<div class="fc-card-course" style="background:${course.bg};color:${course.color};border:1px solid ${course.border}">${course.label}</div>`:''}
         <div class="fc-card-front">${card.front}</div>
         <div class="fc-card-back">${card.back}</div>
         <div class="fc-card-hint">Tap to reveal answer</div>
       </div>
-      <div class="fc-actions ${FC.flipped?'':'fc-actions-hidden'}" id="fc-actions">
-        <button class="fc-btn again" onclick="rateCard('again')">Again<span>Repeat now</span></button>
+      <div class="fc-actions ${FC.flipped?'':'fc-actions-hidden'}">
+        <button class="fc-btn again" onclick="rateCard('again')">Again<span>Repeat soon</span></button>
         <button class="fc-btn hard" onclick="rateCard('hard')">Hard<span>+1 day</span></button>
         <button class="fc-btn easy" onclick="rateCard('easy')">Easy<span>+4 days</span></button>
       </div>
-      ${!FC.flipped ? `<div style="text-align:center;margin-top:14px"><button class="btn-sm" onclick="flipCard()">Show Answer</button></div>` : ''}
-      <div style="text-align:center;margin-top:14px">
+      ${!FC.flipped?`<div style="text-align:center;margin-top:14px"><button class="btn-sm" onclick="flipCard()">Show Answer</button></div>`:''}
+      <div style="text-align:center;margin-top:12px">
         <button class="btn-cancel" onclick="FC.view='setup';renderFlashcards()">End Session</button>
       </div>
     </div>`;
@@ -1471,26 +1764,17 @@ async function rateCard(rating){
   FC.sessionStats[rating]++;
   const days = FC_INTERVALS[rating];
   const nextReview = new Date();
-  if(days === 0){ nextReview.setMinutes(nextReview.getMinutes() + 10); }
-  else { nextReview.setDate(nextReview.getDate() + days); }
-  // update in DB
+  if(days === 0) nextReview.setMinutes(nextReview.getMinutes() + 10);
+  else nextReview.setDate(nextReview.getDate() + days);
   await sb.from('flashcards').update({
-    next_review: nextReview.toISOString(),
-    last_rating: rating,
+    next_review: nextReview.toISOString(), last_rating: rating,
     review_count: (card.review_count || 0) + 1
   }).eq('id', card.id);
-  // update local
   const idx = FC.cards.findIndex(c => c.id === card.id);
   if(idx > -1){ FC.cards[idx].next_review = nextReview.toISOString(); FC.cards[idx].last_rating = rating; }
-
-  FC.current++;
-  FC.flipped = false;
-  if(FC.current >= FC.queue.length){
-    FC.view = 'end';
-    renderFlashcards();
-  } else {
-    renderFCStudy(document.getElementById('fc-container'));
-  }
+  FC.current++; FC.flipped = false;
+  if(FC.current >= FC.queue.length){ FC.view = 'end'; renderFlashcards(); }
+  else renderFCStudy(document.getElementById('fc-container'));
 }
 
 function renderFCEnd(el){
@@ -1498,9 +1782,9 @@ function renderFCEnd(el){
   const pct = total > 0 ? Math.round((FC.sessionStats.easy / total) * 100) : 0;
   el.innerHTML = `
     <div class="fc-session-end">
-      <div class="ph-icon" style="font-size:44px;opacity:0.8">🎉</div>
+      <div style="font-size:44px;margin-bottom:12px">🎉</div>
       <h3>Session Complete</h3>
-      <p>You reviewed ${total} card${total !== 1 ? 's' : ''} · ${pct}% easy</p>
+      <p>You reviewed ${total} card${total!==1?'s':''} · ${pct}% easy</p>
       <div class="fc-stats-row">
         <div class="fc-stat"><div class="fc-stat-val" style="color:#f87171">${FC.sessionStats.again}</div><div class="fc-stat-lbl">Again</div></div>
         <div class="fc-stat"><div class="fc-stat-val" style="color:var(--gold2)">${FC.sessionStats.hard}</div><div class="fc-stat-lbl">Hard</div></div>
@@ -1513,22 +1797,21 @@ function renderFCEnd(el){
     </div>`;
 }
 
+// ===== MANAGE =====
 function renderFCManage(el){
   el.innerHTML = `
-    <div style="display:flex;align-items:center;gap:10px;margin-bottom:20px">
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:18px">
       <button class="btn-cancel" onclick="FC.view='setup';renderFlashcards()"><i class="ti ti-arrow-left" style="font-size:13px"></i> Back</button>
-      <div style="font-size:15px;font-weight:600">Add Flashcards</div>
+      <div style="font-size:15px;font-weight:600">Manage Cards</div>
     </div>
     <div class="fc-add-wrap">
-      <h4>New Card</h4>
+      <h4>Add Card Manually</h4>
       <div class="fc-add-row">
-        <textarea id="fc-front" placeholder="Front — question or term (e.g. What is locus standi?)"></textarea>
+        <textarea id="fc-front" placeholder="Front — question or term"></textarea>
         <textarea id="fc-back" placeholder="Back — answer or definition"></textarea>
       </div>
       <div class="fc-add-selects">
-        <select id="fc-course-sel">
-          ${COURSES.map(c => `<option value="${c.id}">${c.name}</option>`).join('')}
-        </select>
+        <select id="fc-course-sel">${COURSES.map(c=>`<option value="${c.id}">${c.name}</option>`).join('')}</select>
         <input style="flex:1;background:var(--bg3);border:1px solid var(--border2);border-radius:8px;padding:8px 10px;color:var(--text);font-family:'Syne',sans-serif;font-size:12px;outline:none" id="fc-topic-inp" placeholder="Topic label (optional)">
       </div>
       <button class="btn-sm" id="fc-add-btn" onclick="addCard()">+ Add Card</button>
@@ -1546,11 +1829,11 @@ function renderCardList(){
     const course = COURSES.find(x => x.id === c.course_id);
     return `<div class="file-row" style="padding-left:14px;flex-direction:column;align-items:flex-start;gap:4px">
       <div style="display:flex;width:100%;align-items:center;gap:8px">
-        ${course ? `<span class="cc-tag" style="background:${course.bg};color:${course.color};border:1px solid ${course.border};font-size:9px">${course.label}</span>` : ''}
+        ${course?`<span class="cc-tag" style="background:${course.bg};color:${course.color};border:1px solid ${course.border};font-size:9px">${course.label}</span>`:''}
         <span style="flex:1;font-size:12px;font-weight:500">${c.front}</span>
         <button class="file-btn del" onclick="deleteCard('${c.id}')"><i class="ti ti-trash"></i></button>
       </div>
-      <div style="font-size:11px;color:var(--text3);padding-left:2px">${c.back}</div>
+      <div style="font-size:11px;color:var(--text3)">${c.back}</div>
     </div>`;
   }).join('');
 }
@@ -1560,26 +1843,23 @@ async function addCard(){
   const back = document.getElementById('fc-back').value.trim();
   const course_id = document.getElementById('fc-course-sel').value;
   const topic_label = document.getElementById('fc-topic-inp').value.trim();
-  if(!front || !back){ toast('Front and back are required','err'); return; }
+  if(!front||!back){ toast('Front and back are required','err'); return; }
   const btn = document.getElementById('fc-add-btn');
-  btn.disabled = true; btn.innerHTML = '<span class="spinner"></span>';
-  const { data, error } = await sb.from('flashcards').insert({ front, back, course_id, topic_label, review_count: 0 }).select().single();
-  if(error){ toast('Error: '+error.message,'err'); btn.disabled=false; btn.textContent='+ Add Card'; return; }
+  btn.disabled=true; btn.innerHTML='<span class="spinner"></span>';
+  const{data,error}=await sb.from('flashcards').insert({front,back,course_id,topic_label,review_count:0}).select().single();
+  if(error){toast('Error: '+error.message,'err');btn.disabled=false;btn.textContent='+ Add Card';return;}
   FC.cards.push(data);
-  document.getElementById('fc-front').value = '';
-  document.getElementById('fc-back').value = '';
-  document.getElementById('fc-topic-inp').value = '';
-  btn.disabled = false; btn.textContent = '+ Add Card';
-  toast('Card added','ok');
-  renderCardList();
+  document.getElementById('fc-front').value='';
+  document.getElementById('fc-back').value='';
+  btn.disabled=false; btn.textContent='+ Add Card';
+  toast('Card added','ok'); renderCardList();
 }
 
 async function deleteCard(id){
   if(!confirm('Delete this card?')) return;
-  await sb.from('flashcards').delete().eq('id', id);
-  FC.cards = FC.cards.filter(c => c.id !== id);
-  renderCardList();
-  toast('Card deleted','ok');
+  await sb.from('flashcards').delete().eq('id',id);
+  FC.cards = FC.cards.filter(c=>c.id!==id);
+  renderCardList(); toast('Card deleted','ok');
 }
 
 </script>
