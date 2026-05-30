@@ -284,12 +284,22 @@ async function deleteCard(id){
 
 
 // ===== TOPIC CRUD =====
-function toggleTopicMenu(menuId){
-  // close all other menus first
+function toggleTopicMenu(menuId, btnEl){
   document.querySelectorAll('.topic-dropdown.open').forEach(m => {
     if(m.id !== menuId) m.classList.remove('open');
   });
-  document.getElementById(menuId)?.classList.toggle('open');
+  const menu = document.getElementById(menuId);
+  if(!menu) return;
+  const isOpen = menu.classList.contains('open');
+  if(isOpen){ menu.classList.remove('open'); return; }
+  // Position using fixed coords from the button
+  const btn = btnEl || menu.previousElementSibling;
+  if(btn){
+    const rect = btn.getBoundingClientRect();
+    menu.style.top = (rect.bottom + 4) + 'px';
+    menu.style.left = (rect.right - 130) + 'px';
+  }
+  menu.classList.add('open');
 }
 // close menus on outside click
 document.addEventListener('click', () => {
@@ -488,7 +498,7 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:'Syne',
 .topic-hdr-menu{position:relative;display:inline-block}
 .topic-menu-btn{background:none;border:none;color:var(--text3);cursor:pointer;font-size:15px;padding:2px 4px;border-radius:5px;transition:all 0.13s;line-height:1}
 .topic-menu-btn:hover{background:var(--bg4);color:var(--text2)}
-.topic-dropdown{display:none;position:absolute;right:0;top:100%;background:var(--bg2);border:1px solid var(--border2);border-radius:8px;padding:4px;z-index:100;min-width:130px;box-shadow:0 4px 16px var(--shadow)}
+.topic-dropdown{display:none;position:fixed;background:var(--bg2);border:1px solid var(--border2);border-radius:8px;padding:4px;z-index:9000;min-width:130px;box-shadow:0 8px 24px var(--shadow)}
 .topic-dropdown.open{display:block}
 .topic-dd-item{display:flex;align-items:center;gap:8px;padding:7px 10px;border-radius:6px;cursor:pointer;font-size:12px;color:var(--text2);transition:all 0.12s;white-space:nowrap}
 .topic-dd-item:hover{background:var(--bg3);color:var(--text)}
@@ -749,7 +759,7 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:'Syne',
 
 /* ===== TOPICS / FILES ===== */
 .topics-list{display:flex;flex-direction:column;gap:6px;margin-bottom:13px}
-.topic-block{background:var(--bg2);border:1px solid var(--border);border-radius:10px;overflow:hidden;transition:background 0.2s}
+.topic-block{background:var(--bg2);border:1px solid var(--border);border-radius:10px;transition:background 0.2s;position:relative}
 .topic-hdr{display:flex;align-items:center;gap:9px;padding:11px 13px;cursor:pointer;transition:background 0.12s;user-select:none}
 .topic-hdr:hover{background:var(--bg3)}
 .topic-hdr .ti-folder{font-size:16px;color:var(--neon2)}
@@ -757,7 +767,7 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:'Syne',
 .topic-hdr-count{font-size:10px;color:var(--text3);font-family:'Space Mono',monospace}
 .topic-hdr-chev{font-size:13px;color:var(--text3);transition:transform 0.2s}
 .topic-hdr-chev.open{transform:rotate(180deg)}
-.topic-files{display:none;border-top:1px solid var(--border)}
+.topic-files{display:none;border-top:1px solid var(--border);border-radius:0 0 10px 10px;overflow:hidden}
 .topic-files.open{display:block}
 .file-row{display:flex;align-items:center;gap:9px;padding:9px 13px 9px 38px;border-bottom:1px solid var(--border);transition:background 0.12s}
 .file-row:last-child{border-bottom:none}
@@ -1447,7 +1457,7 @@ function renderPdfs(){
         <span class="topic-hdr-name" id="tname-${topic.id}">${topic.name}</span>
         <span class="topic-hdr-count">${tf.length} file${tf.length!==1?'s':''}</span>
         <div class="topic-hdr-menu" onclick="event.stopPropagation()">
-          <button class="topic-menu-btn" onclick="toggleTopicMenu('tmenu-${topic.id}')"><i class="ti ti-dots-vertical"></i></button>
+          <button class="topic-menu-btn" onclick="toggleTopicMenu('tmenu-${topic.id}',this)"><i class="ti ti-dots-vertical"></i></button>
           <div class="topic-dropdown" id="tmenu-${topic.id}">
             <div class="topic-dd-item" onclick="startRenameTopic('${topic.id}','${topic.name}','pdf')"><i class="ti ti-pencil"></i>Rename</div>
             <div class="topic-dd-item danger" onclick="deleteTopic('${topic.id}','pdf')"><i class="ti ti-trash"></i>Delete folder</div>
@@ -1509,7 +1519,7 @@ function renderAudio(){
         <span class="topic-hdr-name" id="tname-${topic.id}">${topic.name}</span>
         <span class="topic-hdr-count">${tf.length} file${tf.length!==1?'s':''}</span>
         <div class="topic-hdr-menu" onclick="event.stopPropagation()">
-          <button class="topic-menu-btn" onclick="toggleTopicMenu('tmenu-${topic.id}')"><i class="ti ti-dots-vertical"></i></button>
+          <button class="topic-menu-btn" onclick="toggleTopicMenu('tmenu-${topic.id}',this)"><i class="ti ti-dots-vertical"></i></button>
           <div class="topic-dropdown" id="tmenu-${topic.id}">
             <div class="topic-dd-item" onclick="startRenameTopic('${topic.id}','${topic.name}','pdf')"><i class="ti ti-pencil"></i>Rename</div>
             <div class="topic-dd-item danger" onclick="deleteTopic('${topic.id}','pdf')"><i class="ti ti-trash"></i>Delete folder</div>
@@ -2126,12 +2136,22 @@ async function deleteCard(id){
 
 
 // ===== TOPIC CRUD =====
-function toggleTopicMenu(menuId){
-  // close all other menus first
+function toggleTopicMenu(menuId, btnEl){
   document.querySelectorAll('.topic-dropdown.open').forEach(m => {
     if(m.id !== menuId) m.classList.remove('open');
   });
-  document.getElementById(menuId)?.classList.toggle('open');
+  const menu = document.getElementById(menuId);
+  if(!menu) return;
+  const isOpen = menu.classList.contains('open');
+  if(isOpen){ menu.classList.remove('open'); return; }
+  // Position using fixed coords from the button
+  const btn = btnEl || menu.previousElementSibling;
+  if(btn){
+    const rect = btn.getBoundingClientRect();
+    menu.style.top = (rect.bottom + 4) + 'px';
+    menu.style.left = (rect.right - 130) + 'px';
+  }
+  menu.classList.add('open');
 }
 // close menus on outside click
 document.addEventListener('click', () => {
