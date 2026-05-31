@@ -1419,36 +1419,25 @@ function setAuthMsg(msg,type){
 async function doLogout(){
   await sb.auth.signOut();
   document.getElementById('app').className='';
+  document.getElementById('student-app').className='';
+  document.getElementById('pending-screen').style.display='none';
   document.getElementById('auth-screen').style.display='flex';
   S.user=null;
+  _userProfile=null;
 }
 
 // ===== BOOT =====
-sb.auth.onAuthStateChange(async(event,session)=>{
-  if(session?.user){
-    S.user=session.user;
-    document.getElementById('auth-screen').style.display='none';
-    document.getElementById('app').className='visible';
-    const meta=session.user.user_metadata;
-    const name=meta?.full_name||session.user.email.split('@')[0];
-    const initials=name.split(' ').map(w=>w[0]).join('').toUpperCase().slice(0,2);
-    document.getElementById('user-av').textContent=initials;
-    document.getElementById('user-name').textContent=name;
-    document.getElementById('user-email').textContent=session.user.email;
-    document.getElementById('dash-name').textContent=name.split(' ')[0];
-    document.getElementById('session-chip').textContent='Active session';
-    await refreshData();
-    await loadCards();
-    renderDashboard();
-  }
-});
+// auth routing handled by role-based handler below
 
 // ===== NAV =====
 document.querySelectorAll('.nav-item[data-view]').forEach(el=>{
   el.addEventListener('click',()=>{
-    switchView(el.dataset.view);
-    document.getElementById('sidebar').classList.remove('mobile-open');
-    document.getElementById('mobile-overlay').classList.remove('open');
+    const v=el.dataset.view;
+    if(v==='admin-mcq'){switchView('admin-mcq');renderAdminMCQ();}
+    else if(v==='students'){switchView('students');renderStudentManagement();}
+    else{switchView(v);}
+    document.getElementById('sidebar')?.classList.remove('mobile-open');
+    document.getElementById('mobile-overlay')?.classList.remove('open');
   });
 });
 document.querySelectorAll('.bnav-item[data-view]').forEach(el=>{
@@ -2287,14 +2276,20 @@ async function deleteCard(id){
 let _userProfile = null;
 
 async function getOrCreateProfile(user) {
+  // Try to get existing profile first
   const { data: profile } = await sb.from('user_profiles').select('*').eq('id', user.id).maybeSingle();
   if (profile) return profile;
-  // Profile missing — create it (edge case if trigger failed)
-  const { count } = await sb.from('user_profiles').select('*', { count: 'exact', head: true });
-  const isFirst = (count || 0) === 0;
-  const newProfile = { id: user.id, full_name: user.user_metadata?.full_name || user.email, role: isFirst ? 'admin' : 'student', approved: isFirst };
-  await sb.from('user_profiles').insert(newProfile);
-  return newProfile;
+  // Profile missing — trigger may have failed. Check if any profiles exist at all.
+  const { data: existing } = await sb.from('user_profiles').select('id').limit(1);
+  const isFirst = !existing || existing.length === 0;
+  const newProfile = {
+    id: user.id,
+    full_name: user.user_metadata?.full_name || user.email.split('@')[0],
+    role: isFirst ? 'admin' : 'student',
+    approved: isFirst
+  };
+  const { data: created } = await sb.from('user_profiles').insert(newProfile).select().single();
+  return created || newProfile;
 }
 
 // Override the existing auth state handler by patching boot
@@ -2303,9 +2298,13 @@ async function getOrCreateProfile(user) {
 sb.auth.onAuthStateChange(async (event, session) => {
   if (session?.user) {
     S.user = session.user;
+    // Hide all screens first
     document.getElementById('auth-screen').style.display = 'none';
-    _userProfile = await getOrCreateProfile(session.user);
+    document.getElementById('app').className = '';
+    document.getElementById('student-app').className = '';
+    document.getElementById('pending-screen').style.display = 'none';
     const name = session.user.user_metadata?.full_name || session.user.email.split('@')[0];
+    _userProfile = await getOrCreateProfile(session.user);
     if (_userProfile.role === 'admin') {
       await initAdminApp(session.user, name);
     } else if (_userProfile.approved) {
@@ -2313,6 +2312,12 @@ sb.auth.onAuthStateChange(async (event, session) => {
     } else {
       showPendingScreen(name);
     }
+  } else {
+    // Signed out — show auth screen
+    document.getElementById('auth-screen').style.display = 'flex';
+    document.getElementById('app').className = '';
+    document.getElementById('student-app').className = '';
+    document.getElementById('pending-screen').style.display = 'none';
   }
 });
 
@@ -3181,23 +3186,7 @@ async function addCard() {
   renderCardList();
 }
 
-// ===== HOOK ADMIN NAV FOR NEW VIEWS =====
-document.querySelectorAll('.nav-item[data-view]').forEach(el => {
-  el.addEventListener('click', () => {
-    const v = el.dataset.view;
-    if (v === 'admin-mcq') {
-      switchView('admin-mcq');
-      renderAdminMCQ();
-    } else if (v === 'students') {
-      switchView('students');
-      renderStudentManagement();
-    } else {
-      switchView(v);
-    }
-    document.getElementById('sidebar')?.classList.remove('mobile-open');
-    document.getElementById('mobile-overlay')?.classList.remove('open');
-  });
-});
+
 
 PAGE['admin-mcq'] = { title: 'MCQ Bank', sub: 'Generate and publish MCQs for students' };
 PAGE['students'] = { title: 'Students', sub: 'Manage student access and approvals' };
