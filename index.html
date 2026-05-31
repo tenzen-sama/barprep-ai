@@ -871,6 +871,55 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:'Syne',
   .stats-row{grid-template-columns:1fr 1fr}
   .auth-card{width:95vw;padding:26px 20px}
 }
+
+/* ===== STUDENT APP ===== */
+#student-app{display:none;height:100vh;flex-direction:column}
+#student-app.visible{display:flex}
+#pending-screen{display:none;height:100vh;align-items:center;justify-content:center;flex-direction:column;gap:16px;padding:24px;background:var(--bg)}
+
+/* MCQ styles */
+.mcq-option{display:flex;align-items:center;gap:12px;padding:13px 16px;background:var(--bg2);border:1px solid var(--border);border-radius:10px;cursor:pointer;transition:all 0.13s;margin-bottom:8px;font-size:13px}
+.mcq-option:hover{border-color:var(--border2);background:var(--bg3)}
+.mcq-option.selected{border-color:var(--neon2);background:rgba(124,92,252,0.08)}
+.mcq-option.correct{border-color:var(--green);background:rgba(16,185,129,0.08);color:var(--green)}
+.mcq-option.wrong{border-color:var(--danger);background:rgba(248,113,113,0.08);color:var(--danger)}
+[data-theme="navy"] .mcq-option.selected{border-color:#c9a84c;background:rgba(201,168,76,0.08)}
+.mcq-option-letter{width:26px;height:26px;border-radius:50%;background:var(--bg4);display:flex;align-items:center;justify-content:center;font-size:11px;font-family:'Space Mono',monospace;flex-shrink:0;font-weight:700}
+.mcq-option.selected .mcq-option-letter{background:var(--neon2);color:#fff}
+.mcq-option.correct .mcq-option-letter{background:var(--green);color:#fff}
+.mcq-option.wrong .mcq-option-letter{background:var(--danger);color:#fff}
+.mcq-timer{font-family:'Space Mono',monospace;font-size:18px;font-weight:700;color:var(--neon2);padding:6px 16px;background:rgba(124,92,252,0.1);border-radius:8px;border:1px solid rgba(124,92,252,0.2)}
+.mcq-timer.urgent{color:var(--danger);background:rgba(248,113,113,0.1);border-color:rgba(248,113,113,0.2);animation:pulse 1s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:0.6}}
+.mcq-explanation{background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:12px 14px;font-size:12px;color:var(--text2);line-height:1.6;margin-top:8px}
+.mcq-explanation strong{color:var(--neon2);font-size:11px;text-transform:uppercase;letter-spacing:0.06em;display:block;margin-bottom:4px}
+
+/* Student management */
+.student-row{display:flex;align-items:center;gap:12px;background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:13px 16px;margin-bottom:7px}
+.student-av{width:34px;height:34px;border-radius:50%;background:linear-gradient(135deg,var(--neon),var(--cyan));display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:#fff;font-family:'Space Mono',monospace;flex-shrink:0}
+.student-info{flex:1;min-width:0}
+.student-name{font-size:13px;font-weight:500}
+.student-email{font-size:11px;color:var(--text3);margin-top:1px}
+.student-badge{font-size:10px;font-family:'Space Mono',monospace;padding:2px 8px;border-radius:99px}
+.badge-pending{background:rgba(245,158,11,0.1);color:var(--gold2);border:1px solid rgba(245,158,11,0.25)}
+.badge-active{background:rgba(16,185,129,0.1);color:var(--green);border:1px solid rgba(16,185,129,0.25)}
+.badge-admin{background:rgba(124,92,252,0.12);color:var(--neon2);border:1px solid rgba(124,92,252,0.25)}
+
+/* Publish toggle */
+.pub-toggle{display:flex;align-items:center;gap:6px;cursor:pointer;font-size:11px;color:var(--text3)}
+.pub-toggle input{display:none}
+.pub-slider{width:32px;height:18px;background:var(--bg4);border-radius:99px;position:relative;transition:background 0.2s;flex-shrink:0;border:1px solid var(--border2)}
+.pub-slider::after{content:'';position:absolute;width:12px;height:12px;border-radius:50%;background:#fff;top:2px;left:2px;transition:transform 0.2s}
+.pub-toggle input:checked + .pub-slider{background:var(--green);border-color:var(--green)}
+.pub-toggle input:checked + .pub-slider::after{transform:translateX(14px)}
+
+/* Review card MCQ */
+.review-mcq-card{background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:14px;margin-bottom:8px}
+.review-mcq-q{font-size:13px;font-weight:500;margin-bottom:10px;line-height:1.5}
+.review-mcq-opts{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:8px}
+.review-mcq-opt{font-size:11px;padding:6px 10px;border-radius:7px;border:1px solid var(--border);background:var(--bg3)}
+.review-mcq-opt.correct-opt{border-color:rgba(16,185,129,0.4);background:rgba(16,185,129,0.08);color:var(--green);font-weight:600}
+.review-mcq-actions{display:flex;align-items:center;justify-content:space-between;margin-top:8px}
 </style>
 </head>
 <body data-theme="dark">
@@ -944,8 +993,9 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:'Syne',
           <i class="ti ti-chevron-down nav-section-chev open" id="chev-soon"></i>
         </div>
         <div class="nav-section-body" id="sec-soon" style="max-height:200px">
-          <div class="nav-item" data-view="flashcards"><i class="ti ti-cards"></i><span class="nav-label">Flashcards</span><span class="nav-soon">soon</span></div>
-          <div class="nav-item" data-view="mcq"><i class="ti ti-clipboard-check"></i><span class="nav-label">MCQ Practice</span><span class="nav-soon">soon</span></div>
+          <div class="nav-item" data-view="flashcards"><i class="ti ti-cards"></i><span class="nav-label">Flashcards</span></div>
+          <div class="nav-item" data-view="admin-mcq"><i class="ti ti-clipboard-check"></i><span class="nav-label">MCQ Bank</span></div>
+          <div class="nav-item" data-view="students"><i class="ti ti-users"></i><span class="nav-label">Students</span><span class="nav-badge" id="pending-badge" style="background:rgba(245,158,11,0.15);color:var(--gold2)">0</span></div>
           <div class="nav-item" data-view="drafting"><i class="ti ti-pencil"></i><span class="nav-label">Drafting</span><span class="nav-soon">later</span></div>
         </div>
       </nav>
@@ -1039,13 +1089,135 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:'Syne',
         <div class="view" id="view-drafting">
           <div class="ph-wrap"><div class="ph-icon"><i class="ti ti-pencil"></i></div><div class="ph-title">Drafting Practice</div><div class="ph-sub">AI-evaluated charge sheets, originating processes, and deeds — marked against NLS rubrics.</div><div class="ph-badge">Later</div></div>
         </div>
+
+        <!-- ADMIN MCQ BANK -->
+        <div class="view" id="view-admin-mcq">
+          <div id="admin-mcq-container"></div>
+        </div>
+
+        <!-- STUDENTS -->
+        <div class="view" id="view-students">
+          <div id="students-container"></div>
+        </div>
       </div><!-- /content -->
 
       <!-- Bottom nav (mobile) -->
       <div class="bottom-nav">
         <div class="bottom-nav-items">
           <div class="bnav-item active" data-view="dashboard"><i class="ti ti-layout-dashboard"></i>Home</div>
-          <div class="bnav-item" data-view="pdfs"><i class="ti ti-file-text"></i>PDFs</div>
+          <div class="bnav-ite
+
+<!-- PENDING SCREEN -->
+<div id="pending-screen">
+  <div class="glow-top"></div>
+  <div style="text-align:center;padding:40px 24px">
+    <div style="font-size:48px;margin-bottom:16px">⏳</div>
+    <div style="font-size:20px;font-weight:700;margin-bottom:8px">Account Pending Approval</div>
+    <div style="font-size:13px;color:var(--text3);max-width:300px;margin:0 auto 24px;line-height:1.7">Your registration is complete. The admin will approve your account shortly — check back soon.</div>
+    <button class="btn-sm" onclick="doLogout()">Sign Out</button>
+  </div>
+</div>
+
+<!-- STUDENT APP -->
+<div id="student-app">
+  <div class="glow-top"></div>
+  <div class="mobile-topbar" id="s-mobile-topbar">
+    <button class="hamburger" onclick="toggleStudentSidebar()"><i class="ti ti-menu-2"></i></button>
+    <div class="mobile-logo">BarPrep AI</div>
+    <div class="theme-toggle">
+      <button class="theme-btn" data-theme-val="grey" onclick="setTheme('grey')" title="Grey">◑</button>
+      <button class="theme-btn" data-theme-val="navy" onclick="setTheme('navy')" title="Navy" style="font-size:11px;font-weight:700;letter-spacing:-0.03em">NG</button>
+    </div>
+  </div>
+  <div class="app-body">
+    <div class="mobile-overlay" id="s-mobile-overlay" onclick="toggleStudentSidebar()"></div>
+    <div class="sidebar" id="student-sidebar">
+      <div class="sidebar-logo">
+        <div class="logo-name">BarPrep AI</div>
+        <div class="logo-sub">NLS · Bar Part II · 2025/2026</div>
+      </div>
+      <nav class="sidebar-nav">
+        <div class="nav-section-hdr" onclick="toggleNavSection('s-study')">
+          <span class="nav-section-label">Study</span>
+          <i class="ti ti-chevron-down nav-section-chev open" id="chev-s-study"></i>
+        </div>
+        <div class="nav-section-body" id="sec-s-study" style="max-height:400px">
+          <div class="nav-item active" data-sview="dashboard"><i class="ti ti-layout-dashboard"></i><span class="nav-label">Dashboard</span></div>
+          <div class="nav-item" data-sview="pdfs"><i class="ti ti-file-text"></i><span class="nav-label">PDF Library</span></div>
+          <div class="nav-item" data-sview="audio"><i class="ti ti-headphones"></i><span class="nav-label">Audio Overviews</span></div>
+          <div class="nav-item" data-sview="flashcards"><i class="ti ti-cards"></i><span class="nav-label">Flashcards</span></div>
+          <div class="nav-item" data-sview="mcq"><i class="ti ti-clipboard-check"></i><span class="nav-label">MCQ Practice</span></div>
+        </div>
+      </nav>
+      <div class="sidebar-footer">
+        <div class="user-row">
+          <div class="user-av" id="s-user-av">AA</div>
+          <div class="user-info">
+            <div class="user-name" id="s-user-name">—</div>
+            <div class="user-email" id="s-user-email">—</div>
+          </div>
+          <button class="btn-icon" onclick="doLogout()" title="Sign out"><i class="ti ti-logout"></i></button>
+        </div>
+      </div>
+    </div>
+
+    <div class="main">
+      <div class="topbar" id="s-topbar">
+        <div class="topbar-left">
+          <div class="page-title" id="s-page-title">Dashboard</div>
+          <div class="page-sub" id="s-page-sub">Your study overview</div>
+        </div>
+        <div class="topbar-right">
+          <div class="theme-toggle">
+            <button class="theme-btn" data-theme-val="grey" onclick="setTheme('grey')" title="Grey">◑</button>
+            <button class="theme-btn" data-theme-val="navy" onclick="setTheme('navy')" title="Navy" style="font-size:11px;font-weight:700;letter-spacing:-0.03em">NG</button>
+          </div>
+          <span class="chip chip-cyan" id="s-session-chip">Active session</span>
+        </div>
+      </div>
+
+      <div class="content" id="s-content">
+        <!-- STUDENT DASHBOARD -->
+        <div class="view active" id="sv-dashboard">
+          <div id="sv-dash-inner"></div>
+        </div>
+
+        <!-- STUDENT PDFs -->
+        <div class="view" id="sv-pdfs">
+          <div class="course-tabs" id="sv-pdf-tabs"></div>
+          <div id="sv-pdf-topics"></div>
+        </div>
+
+        <!-- STUDENT AUDIO -->
+        <div class="view" id="sv-audio">
+          <div class="course-tabs" id="sv-audio-tabs"></div>
+          <div id="sv-audio-topics"></div>
+        </div>
+
+        <!-- STUDENT FLASHCARDS -->
+        <div class="view" id="sv-flashcards">
+          <div id="sv-fc-container"></div>
+        </div>
+
+        <!-- STUDENT MCQ -->
+        <div class="view" id="sv-mcq">
+          <div id="sv-mcq-container"></div>
+        </div>
+      </div>
+
+      <div class="bottom-nav">
+        <div class="bottom-nav-items">
+          <div class="bnav-item active" data-sview="dashboard"><i class="ti ti-layout-dashboard"></i>Home</div>
+          <div class="bnav-item" data-sview="pdfs"><i class="ti ti-file-text"></i>PDFs</div>
+          <div class="bnav-item" data-sview="audio"><i class="ti ti-headphones"></i>Audio</div>
+          <div class="bnav-item" data-sview="flashcards"><i class="ti ti-cards"></i>Cards</div>
+          <div class="bnav-item" data-sview="mcq"><i class="ti ti-clipboard-check"></i>MCQ</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+m" data-view="pdfs"><i class="ti ti-file-text"></i>PDFs</div>
           <div class="bnav-item" data-view="audio"><i class="ti ti-headphones"></i>Audio</div>
           <div class="bnav-item" data-view="flashcards"><i class="ti ti-cards"></i>Cards</div>
           <div class="bnav-item" data-view="mcq"><i class="ti ti-clipboard-check"></i>MCQ</div>
@@ -2106,6 +2278,926 @@ async function deleteCard(id){
   FC.cards=FC.cards.filter(c=>c.id!==id);
   renderCardList();toast('Card deleted','ok');
 }
+
+
+// ===== PROFILE & ROUTING =====
+let _userProfile = null;
+
+async function getOrCreateProfile(user) {
+  const { data: profile } = await sb.from('user_profiles').select('*').eq('id', user.id).maybeSingle();
+  if (profile) return profile;
+  // Profile missing — create it (edge case if trigger failed)
+  const { count } = await sb.from('user_profiles').select('*', { count: 'exact', head: true });
+  const isFirst = (count || 0) === 0;
+  const newProfile = { id: user.id, full_name: user.user_metadata?.full_name || user.email, role: isFirst ? 'admin' : 'student', approved: isFirst };
+  await sb.from('user_profiles').insert(newProfile);
+  return newProfile;
+}
+
+// Override the existing auth state handler by patching boot
+// The existing onAuthStateChange calls initAdminApp or initStudentApp based on profile
+// We patch it here:
+sb.auth.onAuthStateChange(async (event, session) => {
+  if (session?.user) {
+    S.user = session.user;
+    document.getElementById('auth-screen').style.display = 'none';
+    _userProfile = await getOrCreateProfile(session.user);
+    const name = session.user.user_metadata?.full_name || session.user.email.split('@')[0];
+    if (_userProfile.role === 'admin') {
+      await initAdminApp(session.user, name);
+    } else if (_userProfile.approved) {
+      await initStudentApp(session.user, name);
+    } else {
+      showPendingScreen(name);
+    }
+  }
+});
+
+async function initAdminApp(user, name) {
+  const initials = name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2);
+  document.getElementById('user-av').textContent = initials;
+  document.getElementById('user-name').textContent = name;
+  document.getElementById('user-email').textContent = user.email;
+  document.getElementById('dash-name').textContent = name.split(' ')[0];
+  document.getElementById('session-chip').textContent = 'Admin';
+  document.getElementById('app').className = 'visible';
+  await refreshData();
+  await loadCards();
+  renderDashboard();
+  // update theme buttons
+  const t = localStorage.getItem('bp-theme') || 'grey';
+  setTheme(t);
+}
+
+async function initStudentApp(user, name) {
+  const initials = name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2);
+  document.getElementById('s-user-av').textContent = initials;
+  document.getElementById('s-user-name').textContent = name;
+  document.getElementById('s-user-email').textContent = user.email;
+  document.getElementById('student-app').className = 'visible';
+  const t = localStorage.getItem('bp-theme') || 'grey';
+  setTheme(t);
+  // hook student nav
+  document.querySelectorAll('[data-sview]').forEach(el => {
+    el.addEventListener('click', () => switchStudentView(el.dataset.sview));
+  });
+  await refreshData();
+  await loadStudentFlashcards();
+  renderStudentDashboard();
+}
+
+function showPendingScreen(name) {
+  document.getElementById('pending-screen').style.display = 'flex';
+  const t = localStorage.getItem('bp-theme') || 'grey';
+  setTheme(t);
+}
+
+// ===== STUDENT SIDEBAR =====
+function toggleStudentSidebar() {
+  const sb2 = document.getElementById('student-sidebar');
+  const o = document.getElementById('s-mobile-overlay');
+  if (sb2) sb2.classList.toggle('mobile-open');
+  if (o) o.classList.toggle('open');
+}
+
+// ===== STUDENT VIEW SWITCHING =====
+const STUDENT_PAGE = {
+  dashboard: { title: 'Dashboard', sub: 'Your study overview' },
+  pdfs: { title: 'PDF Library', sub: 'Course notes and materials' },
+  audio: { title: 'Audio Overviews', sub: 'NotebookLM audio summaries' },
+  flashcards: { title: 'Flashcards', sub: 'Spaced repetition review' },
+  mcq: { title: 'MCQ Practice', sub: 'Timed multiple-choice practice' },
+};
+
+function switchStudentView(v) {
+  document.querySelectorAll('#student-app .view').forEach(el => el.classList.remove('active'));
+  const target = document.getElementById('sv-' + v);
+  if (target) target.classList.add('active');
+  document.querySelectorAll('[data-sview]').forEach(el => el.classList.toggle('active', el.dataset.sview === v));
+  const p = STUDENT_PAGE[v] || {};
+  document.getElementById('s-page-title').textContent = p.title || v;
+  document.getElementById('s-page-sub').textContent = p.sub || '';
+  // close mobile sidebar
+  document.getElementById('student-sidebar')?.classList.remove('mobile-open');
+  document.getElementById('s-mobile-overlay')?.classList.remove('open');
+  if (v === 'pdfs') renderStudentPDFs();
+  if (v === 'audio') renderStudentAudio();
+  if (v === 'flashcards') renderStudentFlashcards();
+  if (v === 'mcq') renderStudentMCQ();
+  if (v === 'dashboard') renderStudentDashboard();
+}
+
+// ===== STUDENT DATA =====
+let _studentCards = []; // {flashcard + progress merged}
+let _studentMCQs = [];  // published MCQs
+
+async function loadStudentFlashcards() {
+  const [cardsRes, progressRes] = await Promise.all([
+    sb.from('flashcards').select('*').eq('published', true).order('created_at'),
+    sb.from('flashcard_progress').select('*').eq('user_id', S.user.id)
+  ]);
+  const progressMap = {};
+  (progressRes.data || []).forEach(p => progressMap[p.flashcard_id] = p);
+  _studentCards = (cardsRes.data || []).map(c => ({ ...c, progress: progressMap[c.id] || null }));
+}
+
+async function loadStudentMCQs() {
+  const { data } = await sb.from('mcqs').select('*').eq('published', true).order('created_at');
+  _studentMCQs = data || [];
+}
+
+function getStudentDueCards() {
+  const now = new Date();
+  return _studentCards.filter(c => !c.progress || new Date(c.progress.next_review) <= now);
+}
+
+// ===== STUDENT DASHBOARD =====
+function renderStudentDashboard() {
+  const el = document.getElementById('sv-dash-inner');
+  if (!el) return;
+  const due = getStudentDueCards();
+  const reviewed = _studentCards.filter(c => c.progress && c.progress.review_count > 0).length;
+  const totalCards = _studentCards.length;
+  const pct = totalCards > 0 ? Math.round((reviewed / totalCards) * 100) : 0;
+  const totalPdfs = Object.values(S.pdfs).flat().length;
+  const totalAudio = Object.values(S.audios).flat().length;
+
+  el.innerHTML = `
+    <div class="dash-hello" style="margin-bottom:20px">
+      <h2>Welcome back, <span style="color:var(--neon2)">${document.getElementById('s-user-name').textContent.split(' ')[0]}</span></h2>
+      <p>Nigerian Law School · Bar Part II</p>
+    </div>
+    <div class="stats-row" style="margin-bottom:20px">
+      <div class="stat"><div class="stat-lbl">PDFs</div><div class="stat-val v-neon">${totalPdfs}</div></div>
+      <div class="stat"><div class="stat-lbl">Audio</div><div class="stat-val v-cyan">${totalAudio}</div></div>
+      <div class="stat"><div class="stat-lbl">Flashcards</div><div class="stat-val v-gold">${totalCards}</div></div>
+      <div class="stat"><div class="stat-lbl">Due Today</div><div class="stat-val v-green">${due.length}</div></div>
+    </div>
+    ${totalCards > 0 ? `
+    <div class="section-label" style="margin-bottom:8px">Continue Studying</div>
+    <div class="continue-card" onclick="switchStudentView('flashcards')" style="margin-bottom:16px">
+      <div class="continue-card-icon study"><i class="ti ti-cards"></i></div>
+      <div class="continue-card-body">
+        <div class="continue-card-label">Flashcards</div>
+        <div class="continue-card-title">${due.length} card${due.length !== 1 ? 's' : ''} due for review</div>
+        <div class="continue-bar" style="margin-top:8px"><div class="continue-bar-fill" style="width:${pct}%"></div></div>
+        <div class="continue-bar-label" style="margin-top:4px">${pct}% of deck reviewed</div>
+      </div>
+      <div class="continue-card-cta"><button class="btn-cta" onclick="event.stopPropagation();switchStudentView('flashcards')">Study Now</button></div>
+    </div>` : `
+    <div class="continue-empty"><i class="ti ti-cards"></i>No flashcards available yet — check back soon.</div>`}
+    <div class="section-label" style="margin-bottom:8px">Quick Actions</div>
+    <div class="quick-actions">
+      <div class="qa-btn" onclick="switchStudentView('pdfs')"><i class="ti ti-file-text"></i><span>Read PDFs</span></div>
+      <div class="qa-btn" onclick="switchStudentView('audio')"><i class="ti ti-headphones"></i><span>Listen</span></div>
+      <div class="qa-btn" onclick="switchStudentView('flashcards')"><i class="ti ti-cards"></i><span>Flashcards</span></div>
+      <div class="qa-btn" onclick="switchStudentView('mcq')"><i class="ti ti-clipboard-check"></i><span>MCQ Practice</span></div>
+    </div>
+    <div class="section-label" style="margin-top:20px;margin-bottom:8px">Your Courses</div>
+    <div class="course-grid" id="sv-course-grid"></div>`;
+
+  // render course progress
+  const grid = document.getElementById('sv-course-grid');
+  if (grid) {
+    COURSES.forEach(course => {
+      const courseCards = _studentCards.filter(c => c.course_id === course.id);
+      const reviewedCards = courseCards.filter(c => c.progress && c.progress.review_count > 0).length;
+      const pct2 = courseCards.length > 0 ? Math.round((reviewedCards / courseCards.length) * 100) : 0;
+      grid.innerHTML += `<div class="course-card" onclick="switchStudentView('flashcards')">
+        <div class="cc-tag" style="background:${course.bg};color:${course.color};border:1px solid ${course.border}">${course.label}</div>
+        <div class="cc-name">${course.name}</div>
+        <div class="cc-pct" style="color:${course.color}">${pct2}%</div>
+        <div class="cc-topics">${reviewedCards} / ${courseCards.length} cards reviewed</div>
+        <div class="cc-bar"><div class="cc-fill" style="width:${pct2}%;background:${course.color}"></div></div>
+      </div>`;
+    });
+  }
+}
+
+// ===== STUDENT PDFs (read-only) =====
+let _studentPdfCourse = 'clp';
+let _studentAudioCourse = 'clp';
+
+function renderStudentPDFs() {
+  buildTabs('sv-pdf-tabs', _studentPdfCourse, id => { _studentPdfCourse = id; renderStudentPDFs(); });
+  const area = document.getElementById('sv-pdf-topics');
+  if (!area) return;
+  const topics = S.topics[_studentPdfCourse] || [];
+  const files = S.pdfs[_studentPdfCourse] || [];
+  if (topics.length === 0) { area.innerHTML = '<div class="empty-state">No materials available yet.</div>'; return; }
+  area.innerHTML = '';
+  const list = document.createElement('div'); list.className = 'topics-list';
+  topics.forEach(topic => {
+    const tf = files.filter(f => f.topic_id === topic.id);
+    if (tf.length === 0) return;
+    const key = 'sv-pdf-' + topic.id;
+    const isOpen = !!S.openTopics[key];
+    const div = document.createElement('div'); div.className = 'topic-block';
+    div.innerHTML = `
+      <div class="topic-hdr" onclick="toggleTopic('${key}',this)">
+        <i class="ti ti-folder"></i>
+        <span class="topic-hdr-name">${topic.name}</span>
+        <span class="topic-hdr-count">${tf.length} file${tf.length !== 1 ? 's' : ''}</span>
+        <i class="ti ti-chevron-down topic-hdr-chev ${isOpen ? 'open' : ''}"></i>
+      </div>
+      <div class="topic-files ${isOpen ? 'open' : ''}" id="tfiles-${key}">
+        ${tf.map(f => `
+          <div class="file-row">
+            <i class="ti ti-file-type-pdf file-icon" style="color:#f87171"></i>
+            <span class="file-name" onclick="openPdfPanel('${f.file_path}','${f.name}')">${f.name}</span>
+            <span class="file-meta">${f.size_label || ''}</span>
+            <button class="file-btn" onclick="openPdfPanel('${f.file_path}','${f.name}')" title="View"><i class="ti ti-eye"></i></button>
+          </div>`).join('')}
+      </div>`;
+    list.appendChild(div);
+  });
+  area.appendChild(list);
+  if (list.children.length === 0) area.innerHTML = '<div class="empty-state">No materials available yet.</div>';
+}
+
+// ===== STUDENT AUDIO (read-only) =====
+function renderStudentAudio() {
+  buildTabs('sv-audio-tabs', _studentAudioCourse, id => { _studentAudioCourse = id; renderStudentAudio(); });
+  const area = document.getElementById('sv-audio-topics');
+  if (!area) return;
+  const topics = S.topics[_studentAudioCourse] || [];
+  const files = S.audios[_studentAudioCourse] || [];
+  if (topics.length === 0) { area.innerHTML = '<div class="empty-state">No audio available yet.</div>'; return; }
+  area.innerHTML = '';
+  const list = document.createElement('div'); list.className = 'topics-list';
+  topics.forEach(topic => {
+    const tf = files.filter(f => f.topic_id === topic.id);
+    if (tf.length === 0) return;
+    const key = 'sv-aud-' + topic.id;
+    const isOpen = !!S.openTopics[key];
+    const courseName = COURSES.find(c => c.id === _studentAudioCourse)?.label || '';
+    const div = document.createElement('div'); div.className = 'topic-block';
+    div.innerHTML = `
+      <div class="topic-hdr" onclick="toggleTopic('${key}',this)">
+        <i class="ti ti-folder"></i>
+        <span class="topic-hdr-name">${topic.name}</span>
+        <span class="topic-hdr-count">${tf.length} audio</span>
+        <i class="ti ti-chevron-down topic-hdr-chev ${isOpen ? 'open' : ''}"></i>
+      </div>
+      <div class="topic-files ${isOpen ? 'open' : ''}" id="tfiles-${key}">
+        ${tf.map(f => {
+          const aid = 'sv-aud-' + f.id;
+          return `<div style="padding:12px 14px 12px 38px;border-bottom:1px solid var(--border)">
+            <div class="audio-hdr" style="margin-bottom:10px">
+              <div class="audio-cover"><i class="ti ti-wave-sine"></i></div>
+              <div class="audio-info">
+                <div class="audio-title">${f.name.replace(/\.[^.]+$/, '')}</div>
+                <div class="audio-sub">${topic.name} · ${courseName}</div>
+              </div>
+            </div>
+            <div class="player">
+              <div class="play-btn" id="pb-${aid}" onclick="playAudio('${aid}','${f.file_path}')"><i class="ti ti-player-play"></i></div>
+              <div class="progress-wrap"><div class="progress-fill" id="pf-${aid}"></div></div>
+              <span class="time-lbl" id="tl-${aid}">0:00</span>
+            </div>
+          </div>`;
+        }).join('')}
+      </div>`;
+    list.appendChild(div);
+  });
+  area.appendChild(list);
+  if (list.children.length === 0) area.innerHTML = '<div class="empty-state">No audio available yet.</div>';
+}
+
+// ===== STUDENT FLASHCARDS (SRS with personal progress) =====
+let _SFC = {
+  mode: 'due', selectedCourse: null,
+  queue: [], current: 0, flipped: false,
+  sessionStats: { again: 0, hard: 0, easy: 0 },
+  view: 'setup',
+};
+
+function renderStudentFlashcards() {
+  const el = document.getElementById('sv-fc-container');
+  if (!el) return;
+  if (_SFC.view === 'study') renderSFCStudy(el);
+  else if (_SFC.view === 'end') renderSFCEnd(el);
+  else renderSFCSetup(el);
+}
+
+function renderSFCSetup(el) {
+  const due = getStudentDueCards();
+  if (_studentCards.length === 0) {
+    el.innerHTML = `<div class="ph-wrap"><div class="ph-icon"><i class="ti ti-cards"></i></div><div class="ph-title">No flashcards yet</div><div class="ph-sub">The admin hasn't published any flashcards yet. Check back soon.</div></div>`;
+    return;
+  }
+  el.innerHTML = `
+    <div style="margin-bottom:14px">
+      <div style="font-size:16px;font-weight:600;margin-bottom:4px">Flashcards</div>
+      <div style="font-size:13px;color:var(--text2)">${_studentCards.length} cards total · <span style="color:var(--neon2);font-family:'Space Mono',monospace">${due.length} due today</span></div>
+    </div>
+    <div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:0.1em;margin-bottom:10px">Study Mode</div>
+    <div class="fc-setup-opts">
+      <div class="fc-opt ${_SFC.mode === 'due' ? 'selected' : ''}" onclick="setSFCMode('due')">Due Today (${due.length})</div>
+      <div class="fc-opt ${_SFC.mode === 'all' ? 'selected' : ''}" onclick="setSFCMode('all')">All Cards (${_studentCards.length})</div>
+      ${COURSES.map(c => {
+        const n = _studentCards.filter(x => x.course_id === c.id).length;
+        return n > 0 ? `<div class="fc-opt ${_SFC.mode === 'course' && _SFC.selectedCourse === c.id ? 'selected' : ''}" onclick="setSFCMode('course','${c.id}')">${c.label} (${n})</div>` : '';
+      }).join('')}
+    </div>
+    <button class="btn-primary" style="max-width:200px;margin-top:8px" onclick="startSFCSession()">Start Session →</button>`;
+}
+
+function setSFCMode(mode, courseId) {
+  _SFC.mode = mode; _SFC.selectedCourse = courseId || null;
+  renderSFCSetup(document.getElementById('sv-fc-container'));
+}
+
+function startSFCSession() {
+  let cards;
+  if (_SFC.mode === 'due') cards = getStudentDueCards();
+  else if (_SFC.mode === 'all') cards = [..._studentCards];
+  else cards = _studentCards.filter(c => c.course_id === _SFC.selectedCourse);
+  if (cards.length === 0) { toast('No cards in this selection', 'err'); return; }
+  _SFC.queue = cards.sort(() => Math.random() - 0.5);
+  _SFC.current = 0; _SFC.flipped = false;
+  _SFC.sessionStats = { again: 0, hard: 0, easy: 0 };
+  _SFC.view = 'study';
+  renderStudentFlashcards();
+}
+
+function renderSFCStudy(el) {
+  const card = _SFC.queue[_SFC.current];
+  const course = COURSES.find(c => c.id === card.course_id);
+  const pct = Math.round((_SFC.current / _SFC.queue.length) * 100);
+  el.innerHTML = `
+    <div class="fc-wrap">
+      <div class="fc-progress-bar"><div class="fc-progress-fill" style="width:${pct}%"></div></div>
+      <div class="fc-meta">
+        <div class="fc-meta-left">Card <span>${_SFC.current + 1}</span> of <span>${_SFC.queue.length}</span></div>
+        <div class="fc-meta-right">
+          <div class="fc-chip new">Again: ${_SFC.sessionStats.again}</div>
+          <div class="fc-chip due">Hard: ${_SFC.sessionStats.hard}</div>
+          <div class="fc-chip done">Easy: ${_SFC.sessionStats.easy}</div>
+        </div>
+      </div>
+      <div class="fc-card ${_SFC.flipped ? 'flipped' : ''}" onclick="sfcFlip()">
+        <div class="fc-card-topic">${card.topic_label || ''}</div>
+        ${course ? `<div class="fc-card-course" style="background:${course.bg};color:${course.color};border:1px solid ${course.border}">${course.label}</div>` : ''}
+        <div class="fc-card-front">${card.front}</div>
+        <div class="fc-card-back">${card.back}</div>
+        <div class="fc-card-hint">Tap to reveal answer</div>
+      </div>
+      <div class="fc-actions ${_SFC.flipped ? '' : 'fc-actions-hidden'}">
+        <button class="fc-btn again" onclick="sfcRate('again')">Again<span>Repeat soon</span></button>
+        <button class="fc-btn hard" onclick="sfcRate('hard')">Hard<span>+1 day</span></button>
+        <button class="fc-btn easy" onclick="sfcRate('easy')">Easy<span>+4 days</span></button>
+      </div>
+      ${!_SFC.flipped ? `<div style="text-align:center;margin-top:14px"><button class="btn-sm" onclick="sfcFlip()">Show Answer</button></div>` : ''}
+      <div style="text-align:center;margin-top:12px"><button class="btn-cancel" onclick="_SFC.view='setup';renderStudentFlashcards()">End Session</button></div>
+    </div>`;
+}
+
+function sfcFlip() { _SFC.flipped = true; renderSFCStudy(document.getElementById('sv-fc-container')); }
+
+async function sfcRate(rating) {
+  const card = _SFC.queue[_SFC.current];
+  _SFC.sessionStats[rating]++;
+  const days = FC_INTERVALS[rating];
+  const nextReview = new Date();
+  if (days === 0) nextReview.setMinutes(nextReview.getMinutes() + 10);
+  else nextReview.setDate(nextReview.getDate() + days);
+  const newCount = (card.progress?.review_count || 0) + 1;
+  // upsert into flashcard_progress
+  await sb.from('flashcard_progress').upsert({
+    user_id: S.user.id,
+    flashcard_id: card.id,
+    next_review: nextReview.toISOString(),
+    last_rating: rating,
+    review_count: newCount,
+  }, { onConflict: 'user_id,flashcard_id' });
+  // update local
+  card.progress = { next_review: nextReview.toISOString(), last_rating: rating, review_count: newCount };
+  const idx = _studentCards.findIndex(c => c.id === card.id);
+  if (idx > -1) _studentCards[idx].progress = card.progress;
+  _SFC.current++; _SFC.flipped = false;
+  if (_SFC.current >= _SFC.queue.length) { _SFC.view = 'end'; renderStudentFlashcards(); }
+  else renderSFCStudy(document.getElementById('sv-fc-container'));
+}
+
+function renderSFCEnd(el) {
+  const total = _SFC.sessionStats.again + _SFC.sessionStats.hard + _SFC.sessionStats.easy;
+  const pct = total > 0 ? Math.round((_SFC.sessionStats.easy / total) * 100) : 0;
+  el.innerHTML = `
+    <div class="fc-session-end">
+      <div style="font-size:44px;margin-bottom:12px">🎉</div>
+      <h3>Session Complete</h3>
+      <p>Reviewed ${total} card${total !== 1 ? 's' : ''} · ${pct}% easy</p>
+      <div class="fc-stats-row">
+        <div class="fc-stat"><div class="fc-stat-val" style="color:#f87171">${_SFC.sessionStats.again}</div><div class="fc-stat-lbl">Again</div></div>
+        <div class="fc-stat"><div class="fc-stat-val" style="color:var(--gold2)">${_SFC.sessionStats.hard}</div><div class="fc-stat-lbl">Hard</div></div>
+        <div class="fc-stat"><div class="fc-stat-val" style="color:var(--green)">${_SFC.sessionStats.easy}</div><div class="fc-stat-lbl">Easy</div></div>
+      </div>
+      <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap">
+        <button class="btn-primary" style="max-width:160px" onclick="_SFC.view='setup';renderStudentFlashcards()">Back</button>
+        <button class="btn-sm" onclick="startSFCSession()">Study Again</button>
+      </div>
+    </div>`;
+}
+
+// ===== STUDENT MCQ =====
+let _MCQ = {
+  questions: [], current: 0, answers: [],
+  timer: null, timeLeft: 0,
+  view: 'setup', // setup | quiz | results
+  selectedCourse: 'all',
+};
+
+async function renderStudentMCQ() {
+  const el = document.getElementById('sv-mcq-container');
+  if (!el) return;
+  if (_studentMCQs.length === 0) await loadStudentMCQs();
+  if (_MCQ.view === 'quiz') renderMCQQuiz(el);
+  else if (_MCQ.view === 'results') renderMCQResults(el);
+  else renderMCQSetup(el);
+}
+
+function renderMCQSetup(el) {
+  const available = _MCQ.selectedCourse === 'all' ? _studentMCQs : _studentMCQs.filter(q => q.course_id === _MCQ.selectedCourse);
+  el.innerHTML = `
+    <div style="margin-bottom:16px">
+      <div style="font-size:16px;font-weight:600;margin-bottom:4px">MCQ Practice</div>
+      <div style="font-size:13px;color:var(--text2)">${_studentMCQs.length} questions available</div>
+    </div>
+    <div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:0.1em;margin-bottom:8px">Filter by Course</div>
+    <div class="fc-setup-opts" style="margin-bottom:16px">
+      <div class="fc-opt ${_MCQ.selectedCourse === 'all' ? 'selected' : ''}" onclick="setMCQCourse('all')">All (${_studentMCQs.length})</div>
+      ${COURSES.map(c => {
+        const n = _studentMCQs.filter(q => q.course_id === c.id).length;
+        return n > 0 ? `<div class="fc-opt ${_MCQ.selectedCourse === c.id ? 'selected' : ''}" onclick="setMCQCourse('${c.id}')">${c.label} (${n})</div>` : '';
+      }).join('')}
+    </div>
+    ${available.length === 0
+      ? `<div class="empty-state">No questions available for this course yet.</div>`
+      : `<div style="font-size:13px;color:var(--text2);margin-bottom:14px">${available.length} question${available.length !== 1 ? 's' : ''} ready</div>
+         <button class="btn-primary" style="max-width:200px" onclick="startMCQSession()">Start Quiz →</button>`}`;
+}
+
+function setMCQCourse(courseId) {
+  _MCQ.selectedCourse = courseId;
+  renderMCQSetup(document.getElementById('sv-mcq-container'));
+}
+
+function startMCQSession() {
+  const pool = _MCQ.selectedCourse === 'all' ? _studentMCQs : _studentMCQs.filter(q => q.course_id === _MCQ.selectedCourse);
+  if (pool.length === 0) { toast('No questions available', 'err'); return; }
+  _MCQ.questions = pool.sort(() => Math.random() - 0.5).slice(0, Math.min(pool.length, 20));
+  _MCQ.current = 0;
+  _MCQ.answers = new Array(_MCQ.questions.length).fill(null);
+  _MCQ.view = 'quiz';
+  renderMCQQuiz(document.getElementById('sv-mcq-container'));
+}
+
+function renderMCQQuiz(el) {
+  const q = _MCQ.questions[_MCQ.current];
+  const answered = _MCQ.answers[_MCQ.current];
+  const pct = Math.round((_MCQ.current / _MCQ.questions.length) * 100);
+  const course = COURSES.find(c => c.id === q.course_id);
+  const opts = [
+    { key: 'a', text: q.option_a },
+    { key: 'b', text: q.option_b },
+    { key: 'c', text: q.option_c },
+    { key: 'd', text: q.option_d },
+  ];
+  el.innerHTML = `
+    <div class="fc-progress-bar" style="margin-bottom:16px"><div class="fc-progress-fill" style="width:${pct}%"></div></div>
+    <div class="fc-meta" style="margin-bottom:16px">
+      <div class="fc-meta-left">Question <span>${_MCQ.current + 1}</span> of <span>${_MCQ.questions.length}</span></div>
+      ${course ? `<div class="fc-chip done" style="margin-left:auto">${course.label}</div>` : ''}
+    </div>
+    <div style="font-size:15px;font-weight:600;line-height:1.6;margin-bottom:18px">${q.question}</div>
+    ${opts.filter(o => o.text).map(o => {
+      let cls = 'mcq-option';
+      if (answered) {
+        if (o.key === q.correct_option) cls += ' correct';
+        else if (o.key === answered && answered !== q.correct_option) cls += ' wrong';
+      } else if (o.key === answered) cls += ' selected';
+      const clickable = answered ? '' : `onclick="selectMCQAnswer('${o.key}')"`;
+      return `<div class="${cls}" ${clickable}>
+        <div class="mcq-option-letter">${o.key.toUpperCase()}</div>
+        ${o.text}
+      </div>`;
+    }).join('')}
+    ${answered && q.explanation ? `<div class="mcq-explanation"><strong>Explanation</strong>${q.explanation}</div>` : ''}
+    <div style="display:flex;justify-content:space-between;margin-top:18px;flex-wrap:wrap;gap:8px">
+      <button class="btn-cancel" onclick="endMCQSession()">End Quiz</button>
+      ${answered ? `<button class="btn-sm" onclick="nextMCQQuestion()">${_MCQ.current < _MCQ.questions.length - 1 ? 'Next Question →' : 'See Results →'}</button>` : ''}
+    </div>`;
+}
+
+async function selectMCQAnswer(key) {
+  if (_MCQ.answers[_MCQ.current] !== null) return;
+  _MCQ.answers[_MCQ.current] = key;
+  const q = _MCQ.questions[_MCQ.current];
+  const isCorrect = key === q.correct_option;
+  // save attempt
+  await sb.from('mcq_attempts').insert({
+    user_id: S.user.id,
+    mcq_id: q.id,
+    selected_option: key,
+    is_correct: isCorrect,
+  });
+  renderMCQQuiz(document.getElementById('sv-mcq-container'));
+}
+
+function nextMCQQuestion() {
+  if (_MCQ.current < _MCQ.questions.length - 1) {
+    _MCQ.current++;
+    renderMCQQuiz(document.getElementById('sv-mcq-container'));
+  } else {
+    _MCQ.view = 'results';
+    renderMCQResults(document.getElementById('sv-mcq-container'));
+  }
+}
+
+function endMCQSession() {
+  _MCQ.view = 'results';
+  renderMCQResults(document.getElementById('sv-mcq-container'));
+}
+
+function renderMCQResults(el) {
+  const answered = _MCQ.answers.filter(a => a !== null).length;
+  const correct = _MCQ.questions.filter((q, i) => _MCQ.answers[i] === q.correct_option).length;
+  const pct = answered > 0 ? Math.round((correct / answered) * 100) : 0;
+  el.innerHTML = `
+    <div class="fc-session-end">
+      <div style="font-size:44px;margin-bottom:12px">${pct >= 70 ? '🎉' : pct >= 50 ? '📚' : '💪'}</div>
+      <h3>Quiz Complete</h3>
+      <p>${correct} / ${answered} correct · ${pct}%</p>
+      <div class="fc-stats-row">
+        <div class="fc-stat"><div class="fc-stat-val" style="color:var(--green)">${correct}</div><div class="fc-stat-lbl">Correct</div></div>
+        <div class="fc-stat"><div class="fc-stat-val" style="color:var(--danger)">${answered - correct}</div><div class="fc-stat-lbl">Wrong</div></div>
+        <div class="fc-stat"><div class="fc-stat-val" style="color:var(--text3)">${_MCQ.questions.length - answered}</div><div class="fc-stat-lbl">Skipped</div></div>
+      </div>
+      <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-bottom:20px">
+        <button class="btn-primary" style="max-width:160px" onclick="_MCQ.view='setup';renderStudentMCQ()">New Quiz</button>
+        <button class="btn-sm" onclick="startMCQSession()">Retry</button>
+      </div>
+    </div>
+    <div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:0.1em;margin-bottom:10px">Review Answers</div>
+    ${_MCQ.questions.map((q, i) => {
+      const ans = _MCQ.answers[i];
+      const isCorrect = ans === q.correct_option;
+      return `<div style="background:var(--bg2);border:1px solid ${isCorrect ? 'rgba(16,185,129,0.3)' : ans ? 'rgba(248,113,113,0.3)' : 'var(--border)'};border-radius:10px;padding:13px;margin-bottom:8px">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+          <span style="font-size:11px;font-family:'Space Mono',monospace;color:var(--text3)">Q${i + 1}</span>
+          <span style="font-size:12px;font-weight:500;flex:1">${q.question}</span>
+          <span style="font-size:14px">${isCorrect ? '✅' : ans ? '❌' : '—'}</span>
+        </div>
+        <div style="font-size:11px;color:var(--text3)">Correct: <strong style="color:var(--green)">${q.correct_option?.toUpperCase()} — ${q['option_' + q.correct_option] || ''}</strong></div>
+        ${ans && !isCorrect ? `<div style="font-size:11px;color:var(--danger);margin-top:2px">Your answer: ${ans.toUpperCase()} — ${q['option_' + ans] || ''}</div>` : ''}
+        ${q.explanation ? `<div class="mcq-explanation" style="margin-top:6px"><strong>Explanation</strong>${q.explanation}</div>` : ''}
+      </div>`;
+    }).join('')}`;
+}
+
+// ===== ADMIN: STUDENT MANAGEMENT =====
+async function renderStudentManagement() {
+  const el = document.getElementById('students-container');
+  if (!el) return;
+  el.innerHTML = '<div class="loading-wrap"><div class="spinner"></div>Loading students...</div>';
+  const { data: profiles } = await sb.from('user_profiles').select('*').order('created_at');
+  const { data: authUsers } = await sb.auth.admin?.listUsers() || { data: null };
+  if (!profiles || profiles.length === 0) {
+    el.innerHTML = '<div class="empty-state">No students registered yet.</div>';
+    return;
+  }
+  const pending = profiles.filter(p => !p.approved && p.role !== 'admin').length;
+  document.getElementById('pending-badge').textContent = pending;
+  el.innerHTML = `
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:8px">
+      <div>
+        <div style="font-size:16px;font-weight:600">Students</div>
+        <div style="font-size:12px;color:var(--text3);margin-top:2px">${profiles.length} accounts · ${pending} pending</div>
+      </div>
+    </div>
+    ${profiles.map(p => {
+      const initials = (p.full_name || p.id.slice(0, 2)).split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2);
+      return `<div class="student-row">
+        <div class="student-av">${initials}</div>
+        <div class="student-info">
+          <div class="student-name">${p.full_name || 'Unknown'}</div>
+          <div class="student-email" style="font-size:10px;color:var(--text3)">${p.id.slice(0, 8)}…</div>
+        </div>
+        <span class="student-badge ${p.role === 'admin' ? 'badge-admin' : p.approved ? 'badge-active' : 'badge-pending'}">
+          ${p.role === 'admin' ? 'Admin' : p.approved ? 'Active' : 'Pending'}
+        </span>
+        ${p.role !== 'admin' ? `
+          ${!p.approved ? `<button class="btn-sm" style="padding:6px 12px;font-size:10px" onclick="approveStudent('${p.id}')">Approve</button>` : ''}
+          <button class="file-btn del" onclick="removeStudent('${p.id}')" title="Remove"><i class="ti ti-trash"></i></button>
+        ` : ''}
+      </div>`;
+    }).join('')}`;
+}
+
+async function approveStudent(userId) {
+  await sb.from('user_profiles').update({ approved: true }).eq('id', userId);
+  toast('Student approved ✓', 'ok');
+  renderStudentManagement();
+}
+
+async function removeStudent(userId) {
+  if (!confirm('Remove this student? They will lose access.')) return;
+  await sb.from('user_profiles').delete().eq('id', userId);
+  toast('Student removed', 'ok');
+  renderStudentManagement();
+}
+
+// ===== ADMIN: MCQ BANK =====
+let _adminMCQTab = 'generate'; // generate | review | published
+let _mcqReviewQueue = [];
+let _mcqSelectedPdf = null;
+
+async function renderAdminMCQ() {
+  const el = document.getElementById('admin-mcq-container');
+  if (!el) return;
+  el.innerHTML = `
+    <div class="fc-tabs">
+      <div class="fc-tab ${_adminMCQTab === 'generate' ? 'active' : ''}" onclick="setMCQTab('generate')">Generate</div>
+      <div class="fc-tab ${_adminMCQTab === 'review' ? 'active' : ''}" onclick="setMCQTab('review')">Review Queue${_mcqReviewQueue.length > 0 ? ' (' + _mcqReviewQueue.length + ')' : ''}</div>
+      <div class="fc-tab ${_adminMCQTab === 'published' ? 'active' : ''}" onclick="setMCQTab('published')">Published</div>
+    </div>
+    <div id="admin-mcq-inner"></div>`;
+  renderAdminMCQInner();
+}
+
+function setMCQTab(tab) { _adminMCQTab = tab; renderAdminMCQ(); }
+
+async function renderAdminMCQInner() {
+  const el = document.getElementById('admin-mcq-inner');
+  if (!el) return;
+  if (_adminMCQTab === 'generate') renderMCQGenerate(el);
+  else if (_adminMCQTab === 'review') renderMCQReviewQueue(el);
+  else await renderPublishedMCQs(el);
+}
+
+function renderMCQGenerate(el) {
+  const allPdfs = Object.values(S.pdfs).flat();
+  if (allPdfs.length === 0) {
+    el.innerHTML = `<div class="ph-wrap" style="min-height:200px"><div class="ph-icon"><i class="ti ti-file-text"></i></div><div class="ph-title">No PDFs uploaded</div><div class="ph-sub">Upload PDFs first, then generate MCQs from them.</div></div>`;
+    return;
+  }
+  el.innerHTML = `
+    <div style="font-size:13px;color:var(--text2);margin-bottom:14px">Select a PDF to generate MCQs from:</div>
+    <div class="gen-pdf-list">
+      ${COURSES.map(course => {
+        const pdfs = S.pdfs[course.id] || [];
+        return pdfs.map(pdf => `
+          <div class="gen-pdf-row ${_mcqSelectedPdf && _mcqSelectedPdf.id === pdf.id ? 'selected' : ''}"
+               onclick='_mcqSelectedPdf=${JSON.stringify(pdf)};renderMCQGenerate(document.getElementById("admin-mcq-inner"))'>
+            <i class="ti ti-file-type-pdf gen-pdf-icon"></i>
+            <div class="gen-pdf-info">
+              <div class="gen-pdf-name">${pdf.name}</div>
+              <div class="gen-pdf-meta">${course.label} · ${pdf.topics ? pdf.topics.name : ''} · ${pdf.size_label || ''}</div>
+            </div>
+            <i class="ti ti-circle-check gen-pdf-check"></i>
+          </div>`).join('');
+      }).join('')}
+    </div>
+    ${_mcqSelectedPdf ? `<button class="btn-primary" style="max-width:220px;margin-top:4px" onclick="startMCQGeneration()"><i class="ti ti-sparkles" style="font-size:13px;margin-right:5px"></i>Generate MCQs</button>` : ''}`;
+}
+
+async function startMCQGeneration() {
+  if (!_mcqSelectedPdf) { toast('Select a PDF first', 'err'); return; }
+  const el = document.getElementById('admin-mcq-inner');
+  el.innerHTML = `<div class="generating-anim"><div class="spinner"></div><div><div style="color:var(--text2);margin-bottom:3px">Generating MCQs…</div><div style="font-size:11px;color:var(--text3)">${_mcqSelectedPdf.name}</div></div></div>`;
+  try {
+    const { data: urlData } = sb.storage.from('pdfs').getPublicUrl(_mcqSelectedPdf.file_path);
+    const pdfResp = await fetch(urlData.publicUrl);
+    if (!pdfResp.ok) throw new Error('Could not fetch PDF');
+    const pdfBlob = await pdfResp.blob();
+    const pdfBase64 = await new Promise(res => {
+      const r = new FileReader(); r.onload = () => res(r.result.split(',')[1]); r.readAsDataURL(pdfBlob);
+    });
+    const course = COURSES.find(c => c.id === _mcqSelectedPdf.course_id);
+    const systemPrompt = `You are an expert Nigerian Law School Bar Finals MCQ generator.
+Your entire response must be a single valid JSON object. No markdown. No backticks. Start with { and end with }.
+Generate 10 to 20 multiple choice questions from the PDF.
+Each question must have exactly 4 options and one correct answer.
+Required format: {"count":5,"mcqs":[{"question":"...","option_a":"...","option_b":"...","option_c":"...","option_d":"...","correct_option":"a","explanation":"Brief explanation of why the answer is correct"}]}`;
+    const prompt = `Generate MCQs from this ${course ? course.name : ''} PDF for Nigerian Law School Bar Finals. Topic: ${_mcqSelectedPdf.topics ? _mcqSelectedPdf.topics.name : _mcqSelectedPdf.name}.`;
+    const PROXY_URL = 'https://barprep-proxy.0xxronin.workers.dev';
+    const resp = await fetch(PROXY_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ pdfBase64, prompt, systemPrompt }) });
+    if (!resp.ok) throw new Error('Worker error ' + resp.status);
+    const result = await resp.json();
+    if (result.error) throw new Error(result.error);
+    const raw = result.text || '';
+    if (!raw) throw new Error('Empty response from AI');
+    let mcqs = [];
+    try {
+      let clean = raw.replace(/```json\s*/gi, '').replace(/```\s*/g, '').trim();
+      const jsonMatch = clean.match(/\{[\s\S]*\}/);
+      if (jsonMatch) clean = jsonMatch[0];
+      const openB = (clean.match(/\[/g) || []).length - (clean.match(/\]/g) || []).length;
+      const openC = (clean.match(/\{/g) || []).length - (clean.match(/\}/g) || []).length;
+      if (openB > 0) clean += ']'.repeat(openB);
+      if (openC > 0) clean += '}'.repeat(openC);
+      mcqs = JSON.parse(clean).mcqs || [];
+    } catch (e) { throw new Error('Could not parse AI response'); }
+    if (mcqs.length === 0) throw new Error('No MCQs in response');
+    _mcqReviewQueue = mcqs.map(q => ({ ...q, course_id: _mcqSelectedPdf.course_id, topic_label: _mcqSelectedPdf.topics ? _mcqSelectedPdf.topics.name : '', status: 'approved' }));
+    _adminMCQTab = 'review';
+    renderAdminMCQ();
+    toast(mcqs.length + ' MCQs generated', 'ok');
+  } catch (err) {
+    toast('Generation failed: ' + err.message, 'err');
+    _adminMCQTab = 'generate';
+    renderAdminMCQ();
+  }
+}
+
+function renderMCQReviewQueue(el) {
+  if (_mcqReviewQueue.length === 0) {
+    el.innerHTML = '<div class="empty-state">No MCQs in review queue — generate from a PDF first.</div>';
+    return;
+  }
+  const approved = _mcqReviewQueue.filter(q => q.status === 'approved').length;
+  el.innerHTML = `
+    <div class="review-toolbar" style="margin-bottom:12px">
+      <div class="review-toolbar-left"><span>${approved}</span> approved · <span style="color:var(--danger)">${_mcqReviewQueue.length - approved}</span> rejected</div>
+      <div class="review-toolbar-right">
+        <button class="btn-cancel" onclick="_mcqReviewQueue.forEach(q=>{if(q.status!=='rejected')q.status='approved'});renderAdminMCQInner()">Approve All</button>
+        <button class="btn-sm" onclick="saveMCQs()">Publish ${approved} MCQs →</button>
+      </div>
+    </div>
+    ${_mcqReviewQueue.map((q, i) => `
+      <div class="review-mcq-card ${q.status === 'rejected' ? 'rejected' : ''}">
+        <div style="display:flex;align-items:flex-start;gap:8px;margin-bottom:10px">
+          <span style="font-size:10px;font-family:'Space Mono',monospace;color:var(--text3);margin-top:2px">${i + 1}</span>
+          <div class="review-mcq-q" style="flex:1">${q.question}</div>
+          <div class="review-card-actions">
+            <div class="review-btn approve ${q.status === 'approved' ? 'active' : ''}" onclick="_mcqReviewQueue[${i}].status='approved';renderAdminMCQInner()"><i class="ti ti-check"></i></div>
+            <div class="review-btn reject ${q.status === 'rejected' ? 'active' : ''}" onclick="_mcqReviewQueue[${i}].status='rejected';renderAdminMCQInner()"><i class="ti ti-x"></i></div>
+          </div>
+        </div>
+        <div class="review-mcq-opts">
+          <div class="review-mcq-opt ${q.correct_option === 'a' ? 'correct-opt' : ''}">A: ${q.option_a}</div>
+          <div class="review-mcq-opt ${q.correct_option === 'b' ? 'correct-opt' : ''}">B: ${q.option_b}</div>
+          <div class="review-mcq-opt ${q.correct_option === 'c' ? 'correct-opt' : ''}">C: ${q.option_c}</div>
+          <div class="review-mcq-opt ${q.correct_option === 'd' ? 'correct-opt' : ''}">D: ${q.option_d}</div>
+        </div>
+        ${q.explanation ? `<div style="font-size:11px;color:var(--text3);font-style:italic">${q.explanation}</div>` : ''}
+      </div>`).join('')}`;
+}
+
+async function saveMCQs() {
+  const toSave = _mcqReviewQueue.filter(q => q.status === 'approved');
+  if (toSave.length === 0) { toast('No approved MCQs', 'err'); return; }
+  const rows = toSave.map(q => ({
+    course_id: q.course_id, topic_label: q.topic_label,
+    question: q.question, option_a: q.option_a, option_b: q.option_b,
+    option_c: q.option_c, option_d: q.option_d,
+    correct_option: q.correct_option, explanation: q.explanation,
+    published: true
+  }));
+  const { error } = await sb.from('mcqs').insert(rows);
+  if (error) { toast('Save failed: ' + error.message, 'err'); return; }
+  toast(toSave.length + ' MCQs published ✓', 'ok');
+  _mcqReviewQueue = [];
+  _adminMCQTab = 'published';
+  renderAdminMCQ();
+}
+
+async function renderPublishedMCQs(el) {
+  const { data: mcqs } = await sb.from('mcqs').select('*').order('created_at', { ascending: false });
+  if (!mcqs || mcqs.length === 0) {
+    el.innerHTML = '<div class="empty-state">No published MCQs yet — generate and publish from the Generate tab.</div>';
+    return;
+  }
+  el.innerHTML = `
+    <div style="font-size:12px;color:var(--text3);margin-bottom:12px">${mcqs.length} MCQs published</div>
+    ${mcqs.map(q => {
+      const course = COURSES.find(c => c.id === q.course_id);
+      return `<div class="review-mcq-card">
+        <div style="display:flex;align-items:flex-start;gap:8px">
+          ${course ? `<span class="cc-tag" style="background:${course.bg};color:${course.color};border:1px solid ${course.border};font-size:9px;flex-shrink:0">${course.label}</span>` : ''}
+          <div style="flex:1;font-size:12px;font-weight:500">${q.question}</div>
+          <button class="file-btn del" onclick="deleteMCQ('${q.id}')" title="Delete"><i class="ti ti-trash"></i></button>
+        </div>
+      </div>`;
+    }).join('')}`;
+}
+
+async function deleteMCQ(id) {
+  if (!confirm('Delete this MCQ?')) return;
+  await sb.from('mcqs').delete().eq('id', id);
+  toast('MCQ deleted', 'ok');
+  renderPublishedMCQs(document.getElementById('admin-mcq-inner'));
+}
+
+// ===== ADMIN: PUBLISH FLASHCARDS =====
+// Override renderFCManage to add publish toggle
+const _origRenderFCManage = renderFCManage;
+function renderFCManage(el) {
+  el.innerHTML = `
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:18px">
+      <button class="btn-cancel" onclick="FC.view='setup';renderFlashcards()"><i class="ti ti-arrow-left" style="font-size:13px"></i> Back</button>
+      <div style="font-size:15px;font-weight:600">Manage Cards</div>
+    </div>
+    <div class="fc-add-wrap">
+      <h4>Add Card Manually</h4>
+      <div class="fc-add-row">
+        <textarea id="fc-front" placeholder="Front — question or term"></textarea>
+        <textarea id="fc-back" placeholder="Back — answer or definition"></textarea>
+      </div>
+      <div class="fc-add-selects">
+        <select id="fc-course-sel">${COURSES.map(c => `<option value="${c.id}">${c.name}</option>`).join('')}</select>
+        <input style="flex:1;background:var(--bg3);border:1px solid var(--border2);border-radius:8px;padding:8px 10px;color:var(--text);font-family:'Syne',sans-serif;font-size:12px;outline:none" id="fc-topic-inp" placeholder="Topic label (optional)">
+      </div>
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
+        <label class="pub-toggle"><input type="checkbox" id="fc-publish-chk" checked><div class="pub-slider"></div><span>Publish immediately</span></label>
+      </div>
+      <button class="btn-sm" id="fc-add-btn" onclick="addCard()">+ Add Card</button>
+    </div>
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;flex-wrap:wrap;gap:8px">
+      <div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:0.1em">${FC.cards.length} Cards · ${FC.cards.filter(c => c.published).length} Published</div>
+      <button class="btn-sm" style="padding:5px 12px;font-size:10px" onclick="publishAllCards()">Publish All</button>
+    </div>
+    <div id="fc-card-list"></div>`;
+  renderCardList();
+}
+
+async function publishAllCards() {
+  await sb.from('flashcards').update({ published: true }).eq('published', false);
+  FC.cards.forEach(c => c.published = true);
+  toast('All cards published ✓', 'ok');
+  renderFCManage(document.getElementById('fc-container'));
+}
+
+async function toggleCardPublish(id, current) {
+  await sb.from('flashcards').update({ published: !current }).eq('id', id);
+  const idx = FC.cards.findIndex(c => c.id === id);
+  if (idx > -1) FC.cards[idx].published = !current;
+  renderCardList();
+}
+
+// Override renderCardList to add publish toggle
+function renderCardList() {
+  const el = document.getElementById('fc-card-list');
+  if (!el) return;
+  if (FC.cards.length === 0) { el.innerHTML = '<div class="empty-state">No cards yet.</div>'; return; }
+  el.innerHTML = FC.cards.slice().reverse().map(c => {
+    const course = COURSES.find(x => x.id === c.course_id);
+    return `<div class="file-row" style="padding-left:14px;flex-direction:column;align-items:flex-start;gap:4px">
+      <div style="display:flex;width:100%;align-items:center;gap:8px">
+        ${course ? `<span class="cc-tag" style="background:${course.bg};color:${course.color};border:1px solid ${course.border};font-size:9px">${course.label}</span>` : ''}
+        <span style="flex:1;font-size:12px;font-weight:500">${c.front}</span>
+        <label class="pub-toggle" onclick="event.stopPropagation()">
+          <input type="checkbox" ${c.published ? 'checked' : ''} onchange="toggleCardPublish('${c.id}',${c.published})">
+          <div class="pub-slider"></div>
+        </label>
+        <button class="file-btn del" onclick="deleteCard('${c.id}')"><i class="ti ti-trash"></i></button>
+      </div>
+      <div style="font-size:11px;color:var(--text3)">${c.back}</div>
+    </div>`;
+  }).join('');
+}
+
+// Override addCard to respect publish checkbox
+async function addCard() {
+  const front = document.getElementById('fc-front').value.trim();
+  const back = document.getElementById('fc-back').value.trim();
+  const course_id = document.getElementById('fc-course-sel').value;
+  const topic_label = document.getElementById('fc-topic-inp').value.trim();
+  const published = document.getElementById('fc-publish-chk')?.checked !== false;
+  if (!front || !back) { toast('Front and back are required', 'err'); return; }
+  const btn = document.getElementById('fc-add-btn');
+  btn.disabled = true; btn.innerHTML = '<span class="spinner"></span>';
+  const { data, error } = await sb.from('flashcards').insert({ front, back, course_id, topic_label, review_count: 0, published }).select().single();
+  if (error) { toast('Error: ' + error.message, 'err'); btn.disabled = false; btn.textContent = '+ Add Card'; return; }
+  FC.cards.push(data);
+  document.getElementById('fc-front').value = '';
+  document.getElementById('fc-back').value = '';
+  btn.disabled = false; btn.textContent = '+ Add Card';
+  toast('Card added' + (published ? ' & published' : ' (draft)'), 'ok');
+  renderCardList();
+}
+
+// ===== HOOK ADMIN NAV FOR NEW VIEWS =====
+document.querySelectorAll('.nav-item[data-view]').forEach(el => {
+  el.addEventListener('click', () => {
+    const v = el.dataset.view;
+    if (v === 'admin-mcq') {
+      switchView('admin-mcq');
+      renderAdminMCQ();
+    } else if (v === 'students') {
+      switchView('students');
+      renderStudentManagement();
+    } else {
+      switchView(v);
+    }
+    document.getElementById('sidebar')?.classList.remove('mobile-open');
+    document.getElementById('mobile-overlay')?.classList.remove('open');
+  });
+});
+
+PAGE['admin-mcq'] = { title: 'MCQ Bank', sub: 'Generate and publish MCQs for students' };
+PAGE['students'] = { title: 'Students', sub: 'Manage student access and approvals' };
 </script>
 </body>
 </html>
